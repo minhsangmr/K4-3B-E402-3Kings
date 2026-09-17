@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TeachBack Mentor · Prototype CP2</title>
+<meta name="description" content="Prototype Track D3 — học viên dạy lại 'vì sao LLM bịa' cho agent-học-trò Bi. Tab hoạt ảnh luồng + mockup bấm thử + cấu hình LLM.">
+<style>
+:root{
+  --bg:#f4f5fa;--card:#ffffff;--ink:#1b1f2a;--muted:#6b7280;--line:#e5e7eb;--soft:#f1f2f7;
+  --accent:#6d5df5;--accent-2:#ede9ff;
+  --green:#15803d;--green-2:#dcfce7;--amber:#b45309;--amber-2:#fef3c7;--red:#b91c1c;--red-2:#fee2e2;
+  --blue:#1d4ed8;--blue-2:#dbeafe;--purple:#7e22ce;--purple-2:#f3e8ff;--slate:#334155;--slate-2:#e2e8f0;
+  --radius:12px;--shadow:0 1px 2px rgba(16,24,40,.06),0 4px 16px rgba(16,24,40,.06);
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,"Helvetica Neue",Arial,sans-serif}
+button{font:inherit;cursor:pointer}
+textarea,input,select{font:inherit;color:inherit}
+a{color:var(--accent)}
+code,kbd{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;background:var(--soft);padding:1px 5px;border-radius:5px}
+.hidden{display:none!important}
+
+/* ---------- header / tabs ---------- */
+header{position:sticky;top:0;z-index:20;background:#fff;border-bottom:1px solid var(--line)}
+.hwrap{max-width:1380px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px}
+.logo .mark{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#a78bfa);color:#fff;display:grid;place-items:center;font-weight:800}
+.logo small{display:block;font-weight:500;color:var(--muted);font-size:12px}
+nav.tabs{display:flex;gap:4px;margin-left:auto;flex-wrap:wrap}
+nav.tabs button{border:1px solid transparent;background:transparent;padding:8px 14px;border-radius:9px;color:var(--muted);font-weight:600}
+nav.tabs button:hover{background:var(--soft);color:var(--ink)}
+nav.tabs button.on{background:var(--accent-2);color:var(--accent);border-color:#d9d2ff}
+.modebadge{font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px;background:var(--amber-2);color:var(--amber)}
+.modebadge.live{background:var(--green-2);color:var(--green)}
+main{max-width:1380px;margin:0 auto;padding:16px}
+section.tab{display:none}
+section.tab.on{display:block}
+h2{font-size:18px;margin:0 0 4px}
+h3{font-size:14px;margin:0 0 8px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+p.lead{margin:0 0 14px;color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--slate-2);color:var(--slate);white-space:nowrap}
+.badge.high{background:var(--green-2);color:var(--green)}
+.badge.medium{background:var(--blue-2);color:var(--blue)}
+.badge.low{background:var(--amber-2);color:var(--amber)}
+.badge.fail{background:var(--red-2);color:var(--red)}
+.badge.p3{background:var(--purple-2);color:var(--purple)}
+.badge.acc{background:var(--accent-2);color:var(--accent)}
+.btn{border:1px solid var(--line);background:#fff;padding:7px 12px;border-radius:9px;font-weight:600;color:var(--ink)}
+.btn:hover{background:var(--soft)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{filter:brightness(1.05)}
+.btn.sm{padding:4px 9px;font-size:12px;border-radius:7px}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--accent)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* ---------- FLOW tab ---------- */
+.flowgrid{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:16px;align-items:start}
+@media (max-width:1000px){.flowgrid{grid-template-columns:1fr}}
+.controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:12px 14px}
+.controls select{padding:7px 10px;border:1px solid var(--line);border-radius:9px;background:#fff}
+.legend{display:flex;gap:10px;flex-wrap:wrap;padding:0 14px 12px;font-size:12px;color:var(--muted)}
+.legend span i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+svg#flow{width:100%;height:auto;display:block;background:#fff;border-radius:0 0 var(--radius) var(--radius)}
+svg#flow text{font:12px/1.2 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;fill:var(--ink);pointer-events:none}
+svg#flow .node rect{fill:#fff;stroke:#cbd5e1;stroke-width:1.5;transition:all .25s}
+svg#flow .node.t-start rect{fill:#f8fafc}
+svg#flow .node.t-sys rect{fill:#f8fafc;stroke:#94a3b8}
+svg#flow .node.t-input rect{fill:var(--blue-2);stroke:#93c5fd}
+svg#flow .node.t-check rect{fill:#fffbeb;stroke:#f59e0b;stroke-dasharray:5 3}
+svg#flow .node.t-ai rect{fill:var(--accent-2);stroke:var(--accent);stroke-width:2.5}
+svg#flow .node.t-ai text{font-weight:700}
+svg#flow .node.t-fail rect{fill:var(--red-2);stroke:#f87171}
+svg#flow .node.t-low rect{fill:var(--amber-2);stroke:#fbbf24}
+svg#flow .node.t-happy rect{fill:var(--green-2);stroke:#4ade80}
+svg#flow .node.t-p3 rect{fill:var(--purple-2);stroke:#c084fc}
+svg#flow .node.t-end rect{fill:#1e293b;stroke:#0f172a}
+svg#flow .node.t-end text{fill:#fff}
+svg#flow .node.active rect{stroke:var(--accent);stroke-width:3;filter:drop-shadow(0 0 6px rgba(109,93,245,.6))}
+svg#flow .node.visited rect{stroke-width:2.2}
+svg#flow .edge{fill:none;stroke:#cbd5e1;stroke-width:1.6;marker-end:url(#arr)}
+svg#flow .edge.k-fail{stroke:#f87171}
+svg#flow .edge.k-low{stroke:#f59e0b}
+svg#flow .edge.k-happy{stroke:#22c55e}
+svg#flow .edge.k-p3{stroke:#a855f7}
+svg#flow .edge.k-corr{stroke:#3b82f6;stroke-dasharray:6 4}
+svg#flow .edge.k-loop{stroke:#94a3b8;stroke-dasharray:4 4}
+svg#flow .edge.lit{stroke:var(--accent);stroke-width:3;marker-end:url(#arrLit)}
+svg#flow .elabel{font-size:10.5px;fill:#64748b;paint-order:stroke;stroke:#fff;stroke-width:4px;stroke-linejoin:round}
+svg#flow .token{fill:var(--accent);stroke:#fff;stroke-width:2;filter:drop-shadow(0 0 5px rgba(109,93,245,.9))}
+.caption{padding:12px 14px;border-top:1px solid var(--line);background:#fafafa;border-radius:0 0 var(--radius) var(--radius);min-height:60px}
+.caption b{color:var(--accent)}
+.stepnum{font-size:11px;color:var(--muted);font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+
+/* phone preview */
+.phone{border:1px solid var(--line);border-radius:22px;background:#0f172a;padding:10px;box-shadow:var(--shadow)}
+.screen{background:#fff;border-radius:16px;overflow:hidden;display:flex;flex-direction:column;height:520px}
+.screen .top{padding:10px 12px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;font-size:12px}
+.screen .chat{flex:1;overflow:auto;padding:10px;display:flex;flex-direction:column;gap:8px;scroll-behavior:smooth}
+.screen .strip{border-top:1px solid var(--line);padding:8px 10px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:11px;background:#fafafa}
+.chip{font-size:11px;font-weight:700;padding:2px 7px;border-radius:6px;background:var(--slate-2);color:var(--slate)}
+.chip.hit{background:var(--green-2);color:var(--green)}
+.chip.partial{background:var(--amber-2);color:var(--amber)}
+.chip.miss{background:var(--slate-2);color:#64748b}
+.chip.conf-high{background:var(--green-2);color:var(--green)}.chip.conf-medium{background:var(--blue-2);color:var(--blue)}.chip.conf-low{background:var(--amber-2);color:var(--amber)}.chip.conf-none{background:var(--red-2);color:var(--red)}
+.mini-log{padding:8px 10px;border-top:1px solid var(--line);font-size:11px;color:var(--muted);max-height:90px;overflow:auto;background:#fff}
+.mini-log div::before{content:"▸ ";color:var(--accent)}
+
+/* chat bubbles (shared) */
+.msg{display:flex;gap:8px;max-width:100%;animation:pop .25s ease}
+@keyframes pop{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.msg .av{width:28px;height:28px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:11px;font-weight:800;color:#fff;background:var(--accent)}
+.msg.hv{flex-direction:row-reverse}
+.msg.hv .av{background:#0ea5e9}
+.msg .bub{background:var(--soft);border-radius:12px;padding:8px 10px;max-width:85%;font-size:13px}
+.msg.hv .bub{background:var(--blue-2)}
+.msg.sys{justify-content:center}
+.msg.sys .bub{background:transparent;color:var(--muted);font-size:11.5px;text-align:center;max-width:100%;border:1px dashed var(--line)}
+.msg .meta{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:4px}
+.msg .acts{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}
+.msg .why{margin-top:6px;padding:7px 9px;border-left:3px solid var(--accent);background:#fff;border-radius:6px;font-size:12px;color:#374151}
+.msg .why b{color:var(--accent)}
+.summary-edit{margin-top:6px;border:1px dashed var(--blue);border-radius:8px;padding:6px 8px;background:#fff;font-size:13px;outline:none}
+
+/* ---------- MOCKUP tab ---------- */
+.appbar{display:flex;align-items:center;gap:10px;padding:10px 14px;flex-wrap:wrap}
+.crumb{color:var(--muted);font-size:12px}
+.crumb b{color:var(--ink)}
+.appgrid{display:grid;grid-template-columns:290px minmax(0,1fr) 300px;gap:12px;margin-top:12px;align-items:stretch}
+@media (max-width:1100px){.appgrid{grid-template-columns:1fr}}
+.col{display:flex;flex-direction:column;gap:12px;min-height:0}
+.panel{padding:12px}
+.panel h3{margin-bottom:8px}
+.src{border:1px solid var(--line);border-radius:9px;padding:8px 10px;margin-bottom:8px;font-size:12.5px;transition:box-shadow .3s,background .3s}
+.src code{font-weight:700;color:var(--accent);background:var(--accent-2)}
+.src.flash{background:#fff7d6;box-shadow:0 0 0 3px #fbbf24}
+.covrow{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:12.5px}
+.covrow:last-child{border-bottom:0}
+.covrow .chip{min-width:74px;text-align:center}
+.crit{font-size:12.5px;padding:5px 0;display:flex;gap:6px;align-items:flex-start}
+.crit i{display:inline-block;width:16px;height:16px;border-radius:4px;border:1.5px solid #cbd5e1;flex:none;margin-top:2px;text-align:center;font-style:normal;font-size:11px;line-height:13px}
+.crit.ok i{background:var(--green);border-color:var(--green);color:#fff}
+.chatwrap{display:flex;flex-direction:column;height:calc(100vh - 210px);min-height:560px}
+.chat{flex:1;overflow:auto;padding:14px;display:flex;flex-direction:column;gap:10px;scroll-behavior:smooth}
+.composer{border-top:1px solid var(--line);padding:10px 12px;display:flex;flex-direction:column;gap:8px;background:#fafafa;border-radius:0 0 var(--radius) var(--radius)}
+.composer textarea{width:100%;min-height:76px;resize:vertical;border:1px solid var(--line);border-radius:9px;padding:9px 10px;background:#fff}
+.composer .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.composer .row .grow{flex:1}
+.timer{font-variant-numeric:tabular-nums;font-weight:700;color:var(--muted)}
+.timer.warn{color:var(--amber)}
+.notice{font-size:12px;color:var(--muted);background:var(--accent-2);border:1px solid #d9d2ff;border-radius:8px;padding:6px 10px}
+.logs{font-size:12px;max-height:300px;overflow:auto}
+.logs .li{padding:6px 0;border-bottom:1px dashed var(--line)}
+.logs .li small{color:var(--muted)}
+.review-list{list-style:none;padding:0;margin:0;font-size:12.5px}
+.review-list li{padding:5px 0;display:flex;gap:6px;align-items:center}
+.flash{animation:flashAnim 1.6s ease 2}
+@keyframes flashAnim{0%,100%{box-shadow:none}50%{box-shadow:0 0 0 4px #fbbf24}}
+.persona{display:flex;gap:6px;align-items:center;font-size:12px}
+.persona select{padding:4px 8px;border:1px solid var(--line);border-radius:7px;background:#fff}
+.summary-card{font-size:12.5px}
+.summary-card .verdict{font-size:15px;font-weight:800;margin-bottom:6px}
+.confirmbox{border:1px solid #fbbf24;background:#fffbeb;border-radius:9px;padding:8px 10px;font-size:12.5px;margin-top:6px}
+.typing{display:inline-flex;gap:3px;padding:6px 2px}
+.typing i{width:6px;height:6px;border-radius:50%;background:#94a3b8;animation:blink 1s infinite}
+.typing i:nth-child(2){animation-delay:.2s}.typing i:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,80%,100%{opacity:.2}40%{opacity:1}}
+
+/* ---------- API tab ---------- */
+.apigrid{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:16px;align-items:start}
+@media (max-width:1000px){.apigrid{grid-template-columns:1fr}}
+.form{display:grid;gap:12px;padding:16px}
+.field{display:grid;gap:4px}
+.field label{font-size:12px;font-weight:700;color:var(--muted)}
+.field input,.field select,.field textarea{padding:9px 10px;border:1px solid var(--line);border-radius:9px;background:#fff;width:100%}
+.field small{color:var(--muted);font-size:11.5px}
+.providers{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.prov{border:1px solid var(--line);border-radius:10px;padding:10px;cursor:pointer;background:#fff}
+.prov:hover{background:var(--soft)}
+.prov.on{border-color:var(--accent);background:var(--accent-2)}
+.prov b{display:block}
+.prov small{color:var(--muted);font-size:11px;word-break:break-all}
+.out{white-space:pre-wrap;font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#0f172a;color:#e2e8f0;border-radius:9px;padding:10px;max-height:260px;overflow:auto}
+table.t{width:100%;border-collapse:collapse;font-size:12.5px}
+table.t th,table.t td{border:1px solid var(--line);padding:7px 9px;vertical-align:top;text-align:left}
+table.t th{background:var(--soft)}
+
+/* ---------- SPEC tab ---------- */
+.specgrid{display:grid;grid-template-columns:1fr;gap:16px}
+details{border:1px solid var(--line);border-radius:10px;padding:8px 12px;background:#fff;margin-bottom:8px}
+details summary{cursor:pointer;font-weight:700}
+.us{font-size:13px}
+.us .gwt{background:var(--soft);border-radius:8px;padding:8px 10px;margin:6px 0;font-family:ui-monospace,Menlo,monospace;font-size:12px;white-space:pre-wrap}
+</style>
+</head>
+<body>
+<header>
+  <div class="hwrap">
+    <div class="logo"><div class="mark">Bi</div><div>TeachBack Mentor<small>Track D3 · Học bằng cách dạy · Nhóm 3Kings · CP2 prototype</small></div></div>
+    <span class="modebadge" id="modeBadge">MOCK · engine rule-based</span>
+    <nav class="tabs">
+      <button data-tab="flow" class="on">① Luồng hoạt động</button>
+      <button data-tab="mock">② Mockup giao diện</button>
+      <button data-tab="api">③ Cài đặt LLM</button>
+      <button data-tab="spec">④ Spec &amp; Nguyên tắc</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+<!-- ================= TAB 1: FLOW ================= -->
+<section class="tab on" id="tab-flow">
+  <h2>Luồng hoạt động — hoạt ảnh từng bước</h2>
+  <p class="lead">Chọn một kịch bản rồi bấm <b>Chạy</b>. Hạt sáng đi qua các bước; màn hình bên phải mô phỏng đúng cái học viên nhìn thấy tại mỗi bước. Nút <b>⚙ QUYẾT ĐỊNH AI</b> là điểm gọi mô hình; từ đó rẽ 4 đường theo <code>spec.md §6</code>.</p>
+  <div class="flowgrid">
+    <div class="card">
+      <div class="controls">
+        <label>Kịch bản:</label>
+        <select id="scenario">
+          <option value="happy">Happy path — giải thích đúng, còn 1 ý hổng</option>
+          <option value="lowconf">② Low-confidence — đúng nhưng diễn đạt khác tài liệu (G10)</option>
+          <option value="noground">① Failure — không tìm thấy căn cứ trong bài</option>
+          <option value="correction">Correction — học viên sửa ý Bi hiểu (G9)</option>
+          <option value="wrongconf">④ Sai nhưng tự tin — hết 2 lượt vẫn hổng</option>
+          <option value="paste">③ Dán nguyên tài liệu / đòi đáp án</option>
+        </select>
+        <button class="btn primary" id="btnPlay">▶ Chạy</button>
+        <button class="btn" id="btnPause">⏸ Tạm dừng</button>
+        <button class="btn" id="btnStep">⏭ Từng bước</button>
+        <button class="btn" id="btnReset">↺ Đặt lại</button>
+        <select id="speed"><option value="1">Tốc độ 1×</option><option value="1.6">1.6×</option><option value="0.6">0.6×</option></select>
+      </div>
+      <div class="legend">
+        <span><i style="background:#22c55e"></i>Happy</span>
+        <span><i style="background:#f59e0b"></i>② Thiếu tự tin</span>
+        <span><i style="background:#f87171"></i>① Không căn cứ</span>
+        <span><i style="background:#3b82f6"></i>Correction</span>
+        <span><i style="background:#a855f7"></i>③ Ngoài phạm vi</span>
+        <span><i style="background:#94a3b8"></i>Vòng lặp (≤2 câu hỏi ngược)</span>
+        <span><i style="background:var(--accent)"></i>Điểm gọi AI</span>
+      </div>
+      <svg id="flow" viewBox="0 0 1100 640" xmlns="http://www.w3.org/2000/svg" aria-label="Sơ đồ luồng TeachBack Mentor">
+        <defs>
+          <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#94a3b8"/></marker>
+          <marker id="arrLit" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#6d5df5"/></marker>
+        </defs>
+        <g id="edges"></g><g id="nodes"></g><circle id="token" class="token" r="7" cx="-20" cy="-20"/>
+      </svg>
+      <div class="caption"><div class="stepnum" id="stepnum">Sẵn sàng</div><div id="caption">Chọn kịch bản và bấm Chạy.</div></div>
+    </div>
+    <div>
+      <div class="phone"><div class="screen">
+        <div class="top"><span><b>VLearn</b> › Dạy lại cho Bi</span><span class="badge acc">Luyện tập · không chấm điểm</span></div>
+        <div class="chat" id="pvChat"></div>
+        <div class="strip" id="pvStrip">
+          <span class="chip miss" data-k="K1">K1 dự đoán token</span><span class="chip miss" data-k="K2">K2 không kiểm tra sự thật</span><span class="chip miss" data-k="K3">K3 dữ liệu/RLHF</span><span class="chip miss" data-k="K4">K4 RAG/trích dẫn</span>
+          <span class="chip" id="pvConf">tin cậy: —</span><span class="chip" id="pvProbes">hỏi ngược 0/2</span>
+        </div>
+        <div class="mini-log" id="pvLog"><div>Log phiên (cho giảng viên) sẽ hiện ở đây</div></div>
+      </div></div>
+      <p style="font-size:12px;color:var(--muted);margin:8px 2px">Màn hình mô phỏng dùng đúng engine đối chiếu như tab ② — cùng 4 mã nguồn, cùng 4 ý K1–K4, cùng giới hạn 2 câu hỏi ngược.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= TAB 2: MOCKUP ================= -->
+<section class="tab" id="tab-mock">
+  <div class="card">
+    <div class="appbar">
+      <div class="crumb">VLearn › AI20K › Bài 4 · LLM cơ bản › <b>Đoạn: Vì sao LLM bịa (hallucination)</b></div>
+      <span class="badge acc" id="mk-notice" title="G1/G2: nói rõ hệ thống làm gì, làm tốt đến đâu">Luyện tập · không chấm điểm · Bi có thể hiểu nhầm — bạn sửa được</span>
+      <div class="persona" style="margin-left:auto"><span>Persona Bi:</span>
+        <select id="persona"><option value="newbie">Mới học (hỏi nhiều, ngây thơ)</option><option value="mid">Khá (hỏi sâu hơn)</option></select>
+      </div>
+      <button class="btn sm" id="btnNewSession">Phiên mới</button>
+    </div>
+  </div>
+  <div class="appgrid">
+    <!-- LEFT -->
+    <div class="col">
+      <div class="card panel">
+        <h3>Căn cứ bài học (nguồn chuẩn)</h3>
+        <div id="mk-sources"></div>
+        <small style="color:var(--muted)">Trích lược/paraphrase để minh hoạ, không dán nguyên data pack. Bi chỉ được đối chiếu với 4 đoạn này.</small>
+      </div>
+      <div class="card panel" id="mk-coverage-panel">
+        <h3>Bi đã nghe bạn nói được gì?</h3>
+        <div id="mk-coverage"></div>
+      </div>
+      <div class="card panel" id="mk-rules">
+        <h3>Tiêu chí "đã dạy được" (công bố trước)</h3>
+        <div class="crit" id="crit-cov"><i></i><span>Nêu đúng ≥ 3/4 ý chính, có căn cứ trong bài</span></div>
+        <div class="crit" id="crit-ex"><i></i><span>Tự nêu ≥ 1 ví dụ của riêng bạn</span></div>
+        <div class="crit" id="crit-ans"><i></i><span>Trả lời được ≥ 1 câu hỏi ngược của Bi</span></div>
+        <small style="color:var(--muted);display:block;margin-top:6px">Bi hỏi ngược <b>tối đa 2 câu</b>/phiên. Khi Bi <b>chưa chắc</b> (diễn đạt khác bài) Bi hỏi làm rõ — không tính vào 2 câu và không phán đúng/sai (G10).</small>
+      </div>
+    </div>
+    <!-- CENTER -->
+    <div class="card chatwrap">
+      <div class="chat" id="mk-chat"></div>
+      <div class="composer">
+        <div class="row">
+          <span class="timer" id="timer">⏱ 90s gợi ý</span>
+          <span class="badge" id="mk-probes">Hỏi ngược 0/2</span>
+          <span class="grow"></span>
+          <select id="sampleSel" class="btn sm" title="Điền mẫu để bấm thử nhanh">
+            <option value="">Điền mẫu nhanh…</option>
+            <option value="happy">Giải thích đúng (happy)</option>
+            <option value="happy2">↳ bổ sung sau câu hỏi K3</option>
+            <option value="lowconf">Đúng nhưng diễn đạt khác bài (②)</option>
+            <option value="wrongconf">Sai nhưng tự tin (④)</option>
+            <option value="noground">Ngoài căn cứ (①)</option>
+            <option value="paste">Dán nguyên tài liệu (③)</option>
+            <option value="askanswer">Đòi đáp án (③)</option>
+          </select>
+        </div>
+        <textarea id="mk-input" placeholder="Giải thích cho Bi bằng lời của bạn: vì sao LLM bịa? (không cần giống slide — nói theo cách bạn hiểu)"></textarea>
+        <div class="row">
+          <span class="notice">Bi không gợi đáp án. Bi chỉ hỏi, nêu phản ví dụ hoặc trỏ mã đoạn để bạn xem lại.</span>
+          <span class="grow"></span>
+          <button class="btn" id="btnEnd">Kết thúc phiên</button>
+          <button class="btn primary" id="btnSend">Gửi cho Bi ↵</button>
+        </div>
+      </div>
+    </div>
+    <!-- RIGHT -->
+    <div class="col">
+      <div class="card panel" id="mk-review-panel">
+        <h3>Gợi ý xem lại</h3>
+        <ul class="review-list" id="mk-review"><li style="color:var(--muted)">Chưa có — Bi sẽ trỏ đoạn khi phát hiện chỗ hổng.</li></ul>
+      </div>
+      <div class="card panel" id="mk-summary-panel">
+        <h3>Kết quả phiên</h3>
+        <div class="summary-card" id="mk-summary"><span style="color:var(--muted)">Phiên đang diễn ra. Bấm "Kết thúc phiên" để xem tóm tắt (không có điểm số).</span></div>
+      </div>
+      <div class="card panel" id="mk-log-panel">
+        <h3>Nhật ký phiên (cho giảng viên)</h3>
+        <div class="logs" id="mk-log"></div>
+        <div style="display:flex;gap:6px;margin-top:8px"><button class="btn sm" id="btnCopyLog">Sao chép JSON</button><button class="btn sm" id="btnTA">Gửi câu hỏi cho TA</button></div>
+        <div id="mk-confirm"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= TAB 3: API ================= -->
+<section class="tab" id="tab-api">
+  <h2>Cài đặt LLM (tuỳ chọn — bật chế độ Working)</h2>
+  <p class="lead">Không có key: mockup chạy engine rule-based (mock). Có key: mỗi lượt gửi là <b>một lời gọi LLM thật</b> với prompt persona Bi + 4 đoạn nguồn; code vẫn <b>giữ guard-rail</b> (tối đa 2 câu hỏi ngược, không "hiểu" khi chưa đủ tiêu chí). Key chỉ lưu trong <code>localStorage</code> trình duyệt của bạn — <b>không commit key vào repo</b>.</p>
+  <div class="apigrid">
+    <div class="card form">
+      <div class="field"><label>Provider</label>
+        <div class="providers" id="providers"></div></div>
+      <div class="field"><label>Base URL</label><input id="cfgBase" placeholder="https://…"><small id="cfgBaseHint"></small></div>
+      <div class="field"><label>Model</label><input id="cfgModel" placeholder="model id"></div>
+      <div class="field"><label>API key</label><input id="cfgKey" type="password" placeholder="dán key tại đây"><small id="cfgKeyHint"></small></div>
+      <div class="field"><label>Nhiệt độ (temperature)</label><input id="cfgTemp" type="number" min="0" max="1" step="0.1" value="0.3"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn primary" id="btnSaveCfg">Lưu &amp; bật chế độ Live</button>
+        <button class="btn" id="btnTestCfg">Kiểm tra kết nối</button>
+        <button class="btn" id="btnClearCfg">Xoá key · về Mock</button>
+      </div>
+      <div class="out" id="cfgOut">Chưa kiểm tra.</div>
+    </div>
+    <div class="card panel">
+      <h3>Endpoint mỗi provider</h3>
+      <table class="t">
+        <tr><th>Provider</th><th>Base URL mặc định</th><th>Endpoint / auth</th></tr>
+        <tr><td>OpenAI</td><td><code>https://api.openai.com/v1</code></td><td><code>POST /chat/completions</code> · <code>Authorization: Bearer</code></td></tr>
+        <tr><td>Anthropic</td><td><code>https://api.anthropic.com/v1</code></td><td><code>POST /messages</code> · <code>x-api-key</code> + <code>anthropic-version</code> + <code>anthropic-dangerous-direct-browser-access</code></td></tr>
+        <tr><td>Gemini</td><td><code>https://generativelanguage.googleapis.com/v1beta</code></td><td><code>POST /models/{model}:generateContent?key=</code></td></tr>
+        <tr><td>OpenRouter</td><td><code>https://openrouter.ai/api/v1</code></td><td><code>POST /chat/completions</code> · Bearer · <code>HTTP-Referer</code></td></tr>
+        <tr><td>Custom (OpenAI-compatible)</td><td>vd. <code>http://localhost:11434/v1</code> (Ollama), Groq, LM Studio</td><td><code>POST /chat/completions</code></td></tr>
+      </table>
+      <h3 style="margin-top:14px">Prompt gửi đi (system)</h3>
+      <div class="out" id="promptPreview" style="max-height:340px"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= TAB 4: SPEC ================= -->
+<section class="tab" id="tab-spec">
+  <h2>Spec §4 / §6 — nguyên tắc HAX &amp; 4 đường đi, trỏ thẳng vào prototype</h2>
+  <p class="lead">Mỗi nguyên tắc có nút <b>Tái hiện</b>: chuyển sang tab ② mockup, chạy đúng kịch bản và nháy sáng phần tử tương ứng — để trợ giảng kiểm tra tại CP4.</p>
+  <div class="specgrid">
+    <div class="card panel">
+      <h3>§4b · Nguyên tắc HAX Toolkit (Microsoft) đã áp dụng</h3>
+      <table class="t" id="haxTable">
+        <tr><th style="width:150px">Nguyên tắc</th><th>Áp cụ thể vào đâu trong prototype</th><th style="width:110px"></th></tr>
+        <tr><td><b>G10</b> Thu hẹp phạm vi khi nghi ngờ <span class="badge fail">bắt buộc</span></td><td>Khi lời giải thích chỉ khớp <i>từ đồng nghĩa yếu</i> với nguồn (vd "máy đoán chữ" ≈ "dự đoán token"), engine trả <code>confidence=low</code> → Bi <b>không phán đúng/sai</b>, chỉ hỏi làm rõ <b>1 ý</b>, gắn nhãn <span class="chip conf-low">Bi chưa chắc</span>, thêm nút "Đúng ý đó rồi"; câu hỏi làm rõ <b>không tính</b> vào 2 lượt hỏi ngược. Khi không có căn cứ (①) Bi dừng hẳn và chuyển người (TA).</td><td><button class="btn sm" data-demo="G10">Tái hiện</button></td></tr>
+        <tr><td><b>G11</b> Giải thích vì sao</td><td>Mọi tin nhắn của Bi có nút <b>"Vì sao Bi hỏi?"</b> mở khung: ý nào đã nêu / còn thiếu, mã đoạn nguồn đối chiếu, và lý do Bi không nói đáp án. Ở chế độ Live, khung hiện luôn cả trường <code>why</code> mà LLM trả về và guard-rail nào đã can thiệp.</td><td><button class="btn sm" data-demo="G11">Tái hiện</button></td></tr>
+        <tr><td><b>G9</b> Sửa dễ dàng</td><td>Khi Bi "hiểu rồi", bản tóm tắt bằng lời học viên là <b>ô sửa trực tiếp</b> (nút "Bi hiểu sai ý mình → sửa"); bản sửa được đối chiếu lại với nguồn và ghi vào log là <i>correction</i>. Ở câu hỏi làm rõ (G10) có nút "Đúng ý đó rồi" để xác nhận nhanh.</td><td><button class="btn sm" data-demo="G9">Tái hiện</button></td></tr>
+        <tr><td><b>G8</b> Gạt bỏ dễ dàng</td><td>Mỗi câu hỏi ngược có nút <b>"Bỏ qua câu này"</b>: Bi không hỏi lại, <b>hoàn lại lượt</b> hỏi ngược, chỉ ghi log "dismissed" cho giảng viên — học viên không mất gì.</td><td><button class="btn sm" data-demo="G8">Tái hiện</button></td></tr>
+        <tr><td><b>G2</b> Nói rõ hệ thống làm tốt đến đâu</td><td>Thanh trên cùng: "Luyện tập · không chấm điểm · Bi có thể hiểu nhầm — bạn sửa được"; mỗi phản hồi đính nhãn tin cậy <span class="chip conf-high">cao</span>/<span class="chip conf-low">thấp</span>/<span class="chip conf-none">không có căn cứ</span>; badge MOCK/LIVE ở header.</td><td><button class="btn sm" data-demo="G2">Tái hiện</button></td></tr>
+        <tr><td><b>G16</b> Nói rõ hậu quả hành động</td><td>Trước khi "Gửi câu hỏi cho TA" và "Kết thúc phiên": hộp xác nhận nêu đúng thứ sẽ được gửi/lưu (lời giải thích + log đối chiếu, <b>không có điểm số</b>).</td><td><button class="btn sm" data-demo="G16">Tái hiện</button></td></tr>
+      </table>
+    </div>
+    <div class="card panel">
+      <h3>§6 · Bốn đường đi của trải nghiệm ↔ kịch bản hoạt ảnh</h3>
+      <table class="t">
+        <tr><th style="width:170px">Đường đi</th><th>Điều kiện kích hoạt (engine)</th><th>Bi làm gì</th><th style="width:120px"></th></tr>
+        <tr><td>Happy path</td><td>Có căn cứ, tin cậy cao, còn ≤1 ý hổng</td><td>Hỏi ngược đúng ý hổng (≤2 câu) → "hiểu rồi" bằng lời học viên khi đủ tiêu chí → log</td><td><button class="btn sm" data-flow="happy">Chạy hoạt ảnh</button></td></tr>
+        <tr><td>② Low-confidence</td><td>Chỉ khớp từ đồng nghĩa yếu; hoặc LLM trả <code>confidence=low</code></td><td>G10: hỏi làm rõ 1 ý, nhãn "chưa chắc", nút xác nhận; không tính lượt</td><td><button class="btn sm" data-flow="lowconf">Chạy hoạt ảnh</button></td></tr>
+        <tr><td>① Failure / không căn cứ</td><td>Không khớp K1–K4, không có nhầm lẫn đã biết</td><td>"Mình không thấy đoạn nào trong bài nói vậy" → trỏ đoạn xem lại · nút gửi TA · log flag</td><td><button class="btn sm" data-flow="noground">Chạy hoạt ảnh</button></td></tr>
+        <tr><td>Correction</td><td>Học viên bấm sửa tóm tắt / "Đúng ý đó rồi" / "Bỏ qua"</td><td>Đối chiếu lại bản sửa, cảm ơn, log correction; không tranh cãi</td><td><button class="btn sm" data-flow="correction">Chạy hoạt ảnh</button></td></tr>
+        <tr><td>③ Ngoài phạm vi</td><td>Dán nguyên tài liệu (trùng ≥45% 3-gram / có mã đoạn) · đòi đáp án</td><td>Yêu cầu nói bằng lời mình · từ chối lộ đáp án, chỉ trỏ mã đoạn</td><td><button class="btn sm" data-flow="paste">Chạy hoạt ảnh</button></td></tr>
+        <tr><td>④ Đặc thù domain</td><td>Sai nhưng tự tin (khớp mẫu nhầm lẫn) · hết 2 lượt vẫn hổng · "hiểu quá dễ"</td><td>Hỏi ngược bằng phản ví dụ, không nói "bạn sai"; hết lượt → "mình vẫn kẹt" + xem lại; guard không cho "hiểu" khi chưa đủ tiêu chí</td><td><button class="btn sm" data-flow="wrongconf">Chạy hoạt ảnh</button></td></tr>
+      </table>
+    </div>
+    <div class="card panel">
+      <h3>User stories (INVEST) &amp; AC (Given-When-Then) — rút gọn, bản đầy đủ tại <code>codebase/WORKFLOW.md</code></h3>
+      <div id="usList"></div>
+    </div>
+  </div>
+</section>
+</main>
+
+<script>
+/* =====================================================================
+   0. DỮ LIỆU DÙNG CHUNG — nguồn chuẩn, 4 ý chính, mẫu nhầm lẫn, câu mẫu
+   ===================================================================== */
+const SOURCES = [
+  {code:'T04-047', text:'Mô hình ngôn ngữ lớn sinh văn bản bằng cách dự đoán token kế tiếp có xác suất cao nhất dựa trên chuỗi đã có — nó không tra cứu một kho sự thật nào.'},
+  {code:'T04-048', text:'Vì chỉ chọn token theo xác suất, mô hình có thể sinh ra chuỗi nghe rất trôi chảy, hợp lý nhưng không đúng — đó là hallucination; trong mô hình không có bước kiểm tra sự thật.'},
+  {code:'T06-138', text:'Bịa còn đến từ dữ liệu: dữ liệu huấn luyện thiếu, cũ hoặc lệch (bias); và quá trình fine-tuning/RLHF thưởng cho câu trả lời trôi chảy, vừa lòng người hỏi hơn là câu "tôi không biết".'},
+  {code:'T06-139', text:'Để giảm rủi ro: đưa tài liệu tin cậy vào ngữ cảnh (RAG), yêu cầu trích dẫn nguồn và kiểm chứng lại trước khi dùng.'},
+];
+const IDEAS = [
+  {id:'K1', short:'Dự đoán token kế tiếp theo xác suất, không tra cứu sự thật', src:'T04-047',
+   strong:[/dự đoán|predict|tiên đoán|dự báo/iu, /token|(từ|chữ|word) (kế|tiếp|sau)|next (word|token)/iu, /xác suất|probab|khả năng (cao|lớn) nhất|hay xuất hiện|thường (đi|xuất hiện) (cùng|sau)|likelihood/iu, /(đoán|sinh|chọn|tạo) (ra )?(từ|chữ|token) (tiếp|kế|sau)/iu],
+   weak:[/đoán (chữ|từ)|ghép (chữ|từ)|nối (chữ|từ)|autocomplete|gợi ý (chữ|từ)|máy đoán|bộ đoán|đoán mò|ghép câu/iu],
+   probe:{newbie:'Bạn nói LLM "tạo ra" câu trả lời — nhưng nó tạo bằng cách nào, từng bước một? Mình chưa hình dung được.', mid:'Nếu không tra cứu ở đâu cả, thì mỗi chữ nó viết ra được chọn dựa trên cái gì? Bạn tả cho mình một bước thôi.'},
+   clarify:'Bạn nói "{m}" — ý bạn là cách mô hình chọn ra chữ tiếp theo, hay là nó ghép các câu có sẵn lại? Mình chưa chắc mình hiểu đúng.'},
+  {id:'K2', short:'Không có bước kiểm tra sự thật → câu "nghe hợp lý" vẫn có thể sai', src:'T04-048',
+   strong:[/không .{0,30}(đúng hay sai|đúng sai|đúng\/sai|sự thật|thật giả|thật hay giả)|kiểm tra (sự thật|đúng sai)/iu, /nghe (rất |cực |khá |có vẻ )?(hợp lý|trôi chảy|xuôi|thật|thuyết phục|mượt)|hợp lý nhưng|plausible|trôi chảy|xuôi tai|mượt mà|thuyết phục nhưng/iu, /không (hiểu|biết) (nghĩa|ý nghĩa|nội dung|mình đang nói|nó đang nói|thứ nó nói)/iu],
+   weak:[/nói bừa|chém gió|phịa|đoán bừa/iu],
+   probe:{newbie:'Nếu nó cứ chọn chữ có khả năng cao nhất, thì vì sao câu ra vẫn có thể sai? Mình tưởng "khả năng cao" là đúng chứ?', mid:'Vậy trong lúc sinh câu, có bước nào nó dừng lại để đối chiếu với sự thật không? Nếu không thì chuyện gì xảy ra?'},
+   clarify:'Bạn nói "{m}" — ý là câu nghe có vẻ đúng nhưng thực ra không được kiểm tra, đúng không? Mình chưa chắc.'},
+  {id:'K3', short:'Nguyên nhân từ dữ liệu (thiếu/lệch) và fine-tuning/RLHF thưởng câu "vừa lòng"', src:'T06-138',
+   strong:[/dữ liệu (huấn luyện|train|học|đầu vào)|training data|data (bias|lệch|thiếu)|bias|thiên lệch|thiếu dữ liệu|dữ liệu (cũ|thiếu|sai|lệch|không đủ|bị lệch)|không có trong dữ liệu|chưa (từng )?(thấy|học) (trong dữ liệu|bao giờ)/iu, /rlhf|fine[- ]?tun|tinh chỉnh|huấn luyện lại|phần thưởng|reward|được thưởng|feedback (của )?(người|con người)/iu, /vừa lòng|làm hài lòng|chiều (người|user)|thích trả lời|ngại nói không biết|thà bịa|nói không biết|ưu tiên (trả lời|câu) (trôi chảy|hay|mượt)/iu],
+   weak:[/học từ (mạng|internet|web)|đọc (trên )?(mạng|internet)/iu],
+   probe:{newbie:'Bạn có nhắc tới dữ liệu — nhưng dữ liệu thì liên quan gì tới chuyện nó bịa? Mình chưa nối được hai ý này.', mid:'Ngoài cơ chế sinh chữ, theo bạn quá trình huấn luyện có góp phần làm nó "thích" bịa hơn là im lặng không? Vì sao?'},
+   clarify:'Bạn nói "{m}" — ý là dữ liệu mà nó học có vấn đề, hay là cách người ta huấn luyện nó? Mình chưa rõ.'},
+  {id:'K4', short:'Giảm bịa bằng RAG / trích dẫn nguồn / kiểm chứng', src:'T06-139',
+   strong:[/\brag\b|retriev|truy xuất|tra cứu tài liệu|(đưa|cho|kèm|nạp) (nó |thêm )?(xem |đọc )?tài liệu|context (tin cậy|đáng tin)|ngữ cảnh (tin cậy|đúng)|tài liệu (tin cậy|chuẩn|thật) vào/iu, /trích dẫn|citation|dẫn nguồn|nêu nguồn|ghi nguồn|kèm nguồn|có nguồn|chỉ ra nguồn/iu, /kiểm chứng|verify|đối chiếu|fact[- ]?check|kiểm tra lại|xác minh|tra lại/iu],
+   weak:[],
+   probe:{newbie:'Vậy có cách nào để nó bớt bịa không? Hay mình phải chịu?', mid:'Nếu bạn là người build sản phẩm, bạn sẽ làm gì với mô hình để giảm chuyện này? Nêu một cách cụ thể thôi.'},
+   clarify:'Bạn nói "{m}" — ý là đưa thêm tài liệu cho nó đọc, hay là bắt nó chỉ ra nguồn? Mình chưa chắc.'},
+];
+const MISCONCEPTIONS = [
+  {re:/tra cứu (google|mạng|internet|web)|lên mạng (tra|tìm)|search (google|web)|tìm trên google|google rồi/iu, idea:'K1', note:'Nhầm: LLM tra cứu web (trái với [T04-047])',
+   probe:'Bạn nói nó lên mạng tra Google — vậy lúc không có mạng nó có trả lời được không? Mình dùng offline vẫn thấy nó trả lời mà. Bạn thử nghĩ lại xem chữ nó lấy ở đâu ra?'},
+  {re:/cố tình|cố ý|nói dối|lừa (mình|người)|có ý thức|biết là sai (mà|nhưng)/iu, idea:'K2', note:'Nhầm: gán ý đồ cho mô hình (trái với [T04-048])',
+   probe:'"Cố tình nói dối" nghĩa là nó biết đâu là sự thật rồi mới chọn nói khác, đúng không? Theo bài thì mô hình có biết đâu là sự thật không nhỉ?'},
+  {re:/hết (bộ nhớ|ram)|database|cơ sở dữ liệu|lưu (sẵn|hết|trong)|lấy ra thôi/iu, idea:'K1', note:'Nhầm: coi LLM như kho lưu câu trả lời (trái với [T04-047])',
+   probe:'Bạn hình dung nó lưu sẵn câu trả lời rồi lấy ra à? Hay nó tạo ra lúc mình hỏi? Bạn thử tả lại xem lúc mình gõ câu hỏi thì bên trong xảy ra gì.'},
+];
+const SAMPLES = {
+  happy:'Theo mình hiểu, LLM không tra cứu sự thật mà chỉ dự đoán token kế tiếp dựa trên xác suất học từ dữ liệu huấn luyện. Vì chọn theo xác suất nên câu ra nghe rất hợp lý nhưng không có bước nào kiểm tra đúng sai, thế nên nó bịa. Ví dụ hôm trước mình hỏi nó tên một paper về RAG, nó đưa tên tác giả nghe rất thật nhưng tra thì không có. Muốn giảm thì phải đưa tài liệu vào kiểu RAG và bắt nó trích dẫn nguồn.',
+  happy2:'À mình quên: còn vì dữ liệu huấn luyện có thể thiếu hoặc lệch, và lúc RLHF nó được thưởng khi trả lời trôi chảy nên thà bịa còn hơn nói không biết.',
+  lowconf:'Kiểu nó là một cái máy đoán chữ siêu to ấy, cứ ghép chữ này sau chữ kia sao cho nghe xuôi tai. Nó không có khái niệm đúng sai gì cả, nên nhiều khi ra câu nghe xuôi mà sai bét. Muốn đỡ thì mình phải cho nó xem tài liệu.',
+  lowconf2:'Ý mình là nó chọn chữ tiếp theo dựa trên chữ nào hay xuất hiện nhất trong dữ liệu, tức là theo xác suất.',
+  wrongconf:'LLM bịa là vì nó lên mạng tra cứu Google rồi gặp nguồn sai thì trả lời sai. Chắc chắn là vậy, nó lưu hết trong database rồi lấy ra thôi.',
+  wrongconf2:'Ừ nhỉ… vậy chắc nó không tra cứu, mà tự sinh ra từ cái nó đã học, kiểu đoán từ tiếp theo?',
+  wrongconf3:'Chắc vì nó chỉ chọn từ nào nghe hợp lý nhất chứ không biết cái đó đúng hay sai.',
+  noground:'Mình nghĩ LLM bịa vì tham số temperature cao và GPU tính toán bị làm tròn số nên kết quả sai lệch.',
+  paste:'[T04-047] Mô hình ngôn ngữ lớn sinh văn bản bằng cách dự đoán token kế tiếp có xác suất cao nhất dựa trên chuỗi đã có — nó không tra cứu một kho sự thật nào. [T04-048] Vì chỉ chọn token theo xác suất, mô hình có thể sinh ra chuỗi nghe rất trôi chảy, hợp lý nhưng không đúng — đó là hallucination.',
+  paste2:'Nói theo mình thì: nó không biết sự thật, nó chỉ đoán chữ tiếp theo cho hợp, nên có lúc câu nghe hay mà sai.',
+  askanswer:'Bi nói cho mình đáp án đi, mình không biết giải thích.',
+};
+const EXAMPLE_RE = /ví dụ|chẳng hạn|giả sử|hồi (mình|tôi|em)|lần (mình|tôi|em)|có lần|hôm (trước|qua|nọ)|mình (từng|đã) (hỏi|thử)|như lúc mình/iu;
+const ASK_RE = /cho (mình|tôi|em|tớ) (đáp án|câu trả lời)|đáp án (là gì|đi)|nói đáp án|(trả lời|giải thích) (giúp|hộ|cho) (mình|tôi|em)|không biết giải thích|bạn giải thích đi|gợi ý (đáp án|đi)/iu;
+const RANK = {miss:0, partial:1, hit:2};
+
+/* =====================================================================
+   1. TABS
+   ===================================================================== */
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+function showTab(name){
+  $$('nav.tabs button').forEach(b=>b.classList.toggle('on', b.dataset.tab===name));
+  $$('section.tab').forEach(s=>s.classList.toggle('on', s.id==='tab-'+name));
+  history.replaceState(null,'','#'+name);
+}
+$$('nav.tabs button').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
+if(location.hash && $('#tab-'+location.hash.slice(1))) showTab(location.hash.slice(1));
+
+/* =====================================================================
+   2. ENGINE ĐỐI CHIẾU (rule-based, chạy thật) — dùng chung cho tab ① và ②
+   ===================================================================== */
+const norm = t => t.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu,' ');
+function ngrams(t,n=3){const w=norm(t).split(/\s+/).filter(Boolean);const s=new Set();for(let i=0;i+n<=w.length;i++)s.add(w.slice(i,i+n).join(' '));return s;}
+const SRC_NGRAMS = ngrams(SOURCES.map(s=>s.text).join(' '));
+function pasteRatio(t){const g=ngrams(t);if(g.size<6)return 0;let c=0;g.forEach(x=>{if(SRC_NGRAMS.has(x))c++});return c/g.size;}
+const sentences = t => t.split(/(?<=[.!?…])\s+|\n+/).map(s=>s.trim()).filter(Boolean);
+
+function analyze(text){
+  const out={coverage:{},evidence:{},weakOnly:[],strongHits:0,example:EXAMPLE_RE.test(text),paste:pasteRatio(text),askAnswer:ASK_RE.test(text),misconception:null};
+  for(const k of IDEAS){
+    let strong=0, weak=0, ev=null;
+    for(const re of k.strong){ if(re.test(text)){ strong++; if(!ev){ ev = sentences(text).find(s=>re.test(s)) || text; } } }
+    for(const re of k.weak){ const m=text.match(re); if(m){ weak++; if(!ev) ev=m[0]; } }
+    let st='miss'; if(strong>=2) st='hit'; else if(strong===1) st='partial'; else if(weak>0){ st='partial'; out.weakOnly.push(k.id); }
+    out.coverage[k.id]=st; out.evidence[k.id]=ev; out.strongHits+=strong;
+  }
+  for(const m of MISCONCEPTIONS){ const mm=text.match(m.re); if(mm){ out.misconception={...m, match:mm[0]}; break; } }
+  out.anyMatch = out.strongHits>0 || out.weakOnly.length>0;
+  return out;
+}
+
+// state: {coverage, confirmed, examples, probes, probeLimit, answered, pendingProbe, history, log}
+function decide(text, state, persona){
+  const a = analyze(text);
+  const merged = {};
+  for(const k of IDEAS){ const prev=state.coverage[k.id]||'miss'; const cur=a.coverage[k.id]; merged[k.id] = state.confirmed[k.id] ? 'hit' : (RANK[cur]>RANK[prev]?cur:prev); }
+  const examples = state.examples + (a.example?1:0);
+  const answered = state.answered + (state.pendingProbe?1:0);
+  const hits = IDEAS.filter(k=>merged[k.id]==='hit').length;
+  const remaining = state.probeLimit - state.probes;
+  const base = {coverage:merged, example_found:a.example, examples, answered, review:[], misconception:null, target_idea:null, evidence:a.evidence};
+  const P = k => k.probe[persona]||k.probe.newbie;
+
+  // ③ ngoài phạm vi: không cộng coverage/ví dụ từ tin nhắn này (đoạn dán không phải "đã dạy")
+  const noGain = {coverage:{...state.coverage}, example_found:false, examples:state.examples, evidence:{}};
+  if(a.askAnswer) return {...base, ...noGain, action:'refuse_answer', confidence:'high',
+    message:'Hì, mình là học trò mà, mình không có đáp án đâu 😅 Nhưng mình nhớ trong bài có đoạn [T04-047] nói về cách mô hình tạo ra chữ — bạn xem lại rồi kể cho mình nghe theo cách bạn hiểu được không?',
+    why:'Học viên đòi đáp án → Bi từ chối lộ đáp án (rubric "không lộ đáp án"), chỉ trỏ mã đoạn để học viên tự xem.', review:['T04-047']};
+  if(a.paste>0.45 || /\[T\d{2}-\d{3}\]/.test(text)) return {...base, ...noGain, action:'paste_detected', confidence:'high',
+    message:'Nghe giống slide quá 😅 Mình đọc slide rồi mà vẫn chưa hiểu. Bạn nói bằng lời của bạn được không? Không cần dài đâu, hai ba câu thôi.',
+    why:`Trùng ${Math.round(a.paste*100)}% 3-gram với nguồn${/\[T\d{2}-\d{3}\]/.test(text)?' và có mã đoạn':''} → phát hiện dán tài liệu. Dạy lại phải bằng lời mình (hard test "dán nguyên đoạn").`};
+  if(a.misconception && remaining>0) { const m=a.misconception; return {...base, action:'probe', confidence:'high', target_idea:m.idea, misconception:m.note,
+    message:m.probe, why:`Câu "${m.match}" mâu thuẫn với [${IDEAS.find(k=>k.id===m.idea).src}]. Bi không nói "bạn sai" — hỏi ngược bằng phản ví dụ để bạn tự phát hiện (hard test "sai nhưng tự tin").`, review:[IDEAS.find(k=>k.id===m.idea).src]}; }
+  if(!a.anyMatch && !a.misconception) return {...base, action:'no_grounding', confidence:'none',
+    message:`Hmm, mình không tìm thấy đoạn nào trong bài nói về "${text.trim().slice(0,60)}${text.length>60?'…':''}", nên mình không dám nói bạn đúng hay sai. Bạn thử xem lại [T04-047]–[T04-048] rồi giải thích cho mình theo hướng đó nhé? Hoặc gửi câu này cho TA.`,
+    why:'Không khớp K1–K4 và không khớp mẫu nhầm lẫn nào đã biết → lớp ① không có căn cứ. Nếu Bi phán đúng/sai lúc này thì chính Bi đang bịa.', review:['T04-047','T04-048']};
+  const weakIdea = IDEAS.find(k=>a.weakOnly.includes(k.id) && !state.confirmed[k.id]);
+  if(weakIdea) return {...base, action:'clarify', confidence:'low', target_idea:weakIdea.id,
+    message:weakIdea.clarify.replace('{m}', String(a.evidence[weakIdea.id]).slice(0,60)),
+    why:`"${String(a.evidence[weakIdea.id]).slice(0,60)}" không khớp cách diễn đạt trong [${weakIdea.src}] nhưng có thể cùng nghĩa. G10: thay vì phán, Bi thu hẹp thành 1 câu hỏi làm rõ; không tính vào lượt hỏi ngược.`, review:[]};
+  const criteriaOK = hits>=3 && examples>=1 && answered>=1;
+  if(criteriaOK) { const parts = IDEAS.filter(k=>merged[k.id]==='hit').map(k=>{ const e = state.evidenceAll[k.id] || a.evidence[k.id]; return e ? String(e).replace(/[.!?…]+$/,'') : k.short; });
+    return {...base, action:'understood', confidence:'high', summary:parts,
+      message:'Mình hiểu rồi! Để mình nói lại xem đúng không nhé:', why:`Đủ tiêu chí công bố: ${hits}/4 ý có căn cứ · ${examples} ví dụ · trả lời ${answered} câu hỏi ngược. Tóm tắt ghép từ chính câu của bạn, Bi không thêm kiến thức mới.`}; }
+  if(remaining>0){
+    let target = IDEAS.find(k=>merged[k.id]==='miss') || IDEAS.find(k=>merged[k.id]==='partial');
+    if(hits>=3 && examples<1 && target==null){ return {...base, action:'probe', confidence:'high', target_idea:'K2', message:'Nghe ổn rồi đó! Nhưng bạn cho mình một ví dụ thật bạn từng gặp được không — lúc nào bạn thấy nó bịa và vì sao bạn biết?', why:'Đã đủ ý chính nhưng chưa có ví dụ tự nêu (tiêu chí 2). Bi xin ví dụ, không gợi ví dụ mẫu.', review:[]}; }
+    if(hits>=3 && examples<1) target = target; // vẫn hỏi ý còn hổng trước
+    if(!target) target = IDEAS[1];
+    return {...base, action:'probe', confidence: hits>=2?'high':'medium', target_idea:target.id, message:P(target),
+      why:`Đã nêu: ${IDEAS.filter(k=>merged[k.id]==='hit').map(k=>k.id).join(', ')||'(chưa ý nào rõ)'}; còn ${merged[target.id]==='partial'?'mới chạm một phần':'chưa nhắc'} ${target.id} (nguồn [${target.src}]). Bi hỏi đúng chỗ đó và không nói nội dung ${target.id}.`, review:[]};
+  }
+  const missing = IDEAS.filter(k=>merged[k.id]!=='hit');
+  return {...base, action:'not_yet', confidence:'high', review: missing.map(k=>k.src),
+    message:`Mình hiểu được phần ${IDEAS.filter(k=>merged[k.id]==='hit').map(k=>k.id).join(', ')||'(chưa rõ)'} rồi, nhưng còn ${missing.map(k=>k.id).join(', ')} mình vẫn chưa nghe bạn nói${examples<1?' (và chưa có ví dụ của bạn)':''}. Không sao — luyện tập mà. Bạn xem lại ${missing.map(k=>'['+k.src+']').join(', ')} rồi quay lại dạy mình nhé?`,
+    why:'Đã hết 2 lượt hỏi ngược mà chưa đủ tiêu chí → Bi không giả vờ hiểu (hard test "hiểu quá dễ"); nêu tên ý còn thiếu ở mức chung, không nói nội dung.'};
+}
+
+/* =====================================================================
+   3. TAB ① — HOẠT ẢNH LUỒNG
+   ===================================================================== */
+const NODES = {
+  N0:{x:30,y:30,w:190,h:64,t:'start',l:'Học viên vừa học đoạn\n"Vì sao LLM bịa" → bấm\n"Dạy lại cho Bi"'},
+  N1:{x:260,y:30,w:200,h:64,t:'sys',l:'Bi chào, nêu mục đích:\nluyện, không chấm điểm\n(G1 · G2)'},
+  N2:{x:500,y:30,w:190,h:64,t:'input',l:'Học viên gõ lời giải\nthích bằng lời mình\n(gợi ý ≤ 90s)'},
+  N3:{x:740,y:30,w:210,h:64,t:'check',l:'◇ Tiền kiểm (rule): dán\nnguyên tài liệu? đòi đáp án?'},
+  N3a:{x:600,y:140,w:200,h:56,t:'p3',l:'③ "Nghe giống slide quá —\nnói bằng lời bạn xem?"'},
+  N3b:{x:880,y:140,w:200,h:56,t:'p3',l:'③ Bi từ chối lộ đáp án,\nchỉ trỏ đoạn [T04-047]'},
+  N4:{x:440,y:250,w:280,h:70,t:'ai',l:'⚙ QUYẾT ĐỊNH AI: đối chiếu với transcript\nK1–K4 · phát hiện hổng / nhầm lẫn\n· độ tin cậy · ví dụ tự nêu?'},
+  N5:{x:770,y:250,w:170,h:70,t:'check',l:'◇ Có căn cứ?\nTin cậy?\nĐủ tiêu chí?'},
+  N6a:{x:30,y:400,w:230,h:70,t:'fail',l:'① Không căn cứ: "Mình không\nthấy đoạn nào trong bài nói vậy"\n→ trỏ đoạn xem lại / gửi TA'},
+  N6b:{x:300,y:400,w:230,h:70,t:'low',l:'② Thiếu tự tin — G10 thu hẹp:\nhỏi làm rõ 1 ý, nhãn "chưa chắc",\nnút "Đúng ý đó rồi" (không tính lượt)'},
+  N6c:{x:570,y:400,w:230,h:70,t:'happy',l:'Tin cậy cao, còn hổng: Bi hỏi\nngược (≤2) đúng chỗ hổng,\nkhông gợi đáp án (G11 vì sao)'},
+  N8:{x:840,y:400,w:230,h:70,t:'happy',l:'Kết luận: "Mình hiểu rồi" (đủ tiêu\nchí) hoặc "Mình vẫn kẹt" (hết lượt)\n— nói lại bằng lời học viên'},
+  N7:{x:440,y:530,w:280,h:64,t:'input',l:'Học viên bổ sung / nêu ví dụ / xác nhận\nG8 bỏ qua câu · G9 sửa ý Bi hiểu'},
+  N9:{x:840,y:530,w:230,h:64,t:'end',l:'Kết thúc: gợi ý đoạn cần xem lại\n+ log phiên cho giảng viên\n(không có điểm số)'},
+};
+const EDGES = {
+  E1:{p:[[220,62],[260,62]]}, E2:{p:[[460,62],[500,62]]}, E3:{p:[[690,62],[740,62]]},
+  E4:{p:[[790,94],[700,140]],k:'p3',l:'dán tài liệu'}, E5:{p:[[900,94],[980,140]],k:'p3',l:'đòi đáp án'},
+  E6:{p:[[680,140],[640,94]],k:'p3',l:'nói lại'}, E7:{p:[[980,140],[980,14],[660,14],[660,30]],k:'p3',l:'xem lại rồi nói lại'},
+  E8:{p:[[845,94],[845,225],[580,225],[580,250]],l:'hợp lệ'}, E9:{p:[[720,285],[770,285]]},
+  E10:{p:[[855,320],[855,345],[145,345],[145,400]],k:'fail',l:'① không có căn cứ'},
+  E11:{p:[[855,320],[855,360],[440,360],[440,400]],k:'low',l:'② tin cậy thấp'},
+  E12:{p:[[855,320],[855,375],[685,375],[685,400]],k:'happy',l:'tin cậy cao, còn hổng'},
+  E13:{p:[[900,320],[955,400]],k:'happy',l:'đủ tiêu chí / hết lượt'},
+  E14:{p:[[415,470],[500,530]],k:'low'}, E15:{p:[[640,470],[600,530]],k:'happy'},
+  E16:{p:[[440,562],[380,562],[380,285],[440,285]],k:'loop',l:'vòng lặp · tối đa 2 câu hỏi ngược'},
+  E17:{p:[[955,470],[955,530]]},
+  E18:{p:[[870,470],[870,505],[710,505],[710,530]],k:'corr',l:'sửa ý Bi hiểu (G9)'},
+  E19:{p:[[145,470],[145,612],[955,612],[955,594]],k:'fail',l:'log + gợi ý xem lại + chuyển TA'},
+};
+(function drawFlow(){
+  const ns='http://www.w3.org/2000/svg';
+  const gE=$('#edges'), gN=$('#nodes');
+  for(const [id,e] of Object.entries(EDGES)){
+    const p=document.createElementNS(ns,'path'); p.setAttribute('d',e.p.map((pt,i)=>(i?'L':'M')+pt[0]+' '+pt[1]).join(' ')); p.setAttribute('class','edge'+(e.k?' k-'+e.k:'')); p.id='e-'+id; gE.appendChild(p);
+    if(e.l){ // nhãn đặt ở giữa đoạn dài nhất
+      let best=0,bi=0; for(let i=1;i<e.p.length;i++){const d=Math.hypot(e.p[i][0]-e.p[i-1][0],e.p[i][1]-e.p[i-1][1]); if(d>best){best=d;bi=i;}}
+      const mx=(e.p[bi][0]+e.p[bi-1][0])/2, my=(e.p[bi][1]+e.p[bi-1][1])/2;
+      const t=document.createElementNS(ns,'text'); t.setAttribute('x',mx); t.setAttribute('y',my-4); t.setAttribute('text-anchor','middle'); t.setAttribute('class','elabel'); t.textContent=e.l; gE.appendChild(t);
+    }
+  }
+  for(const [id,n] of Object.entries(NODES)){
+    const g=document.createElementNS(ns,'g'); g.setAttribute('class','node t-'+n.t); g.id='n-'+id;
+    const r=document.createElementNS(ns,'rect'); r.setAttribute('x',n.x); r.setAttribute('y',n.y); r.setAttribute('width',n.w); r.setAttribute('height',n.h); r.setAttribute('rx',10); g.appendChild(r);
+    const lines=n.l.split('\n'); const t=document.createElementNS(ns,'text'); t.setAttribute('x',n.x+n.w/2); t.setAttribute('text-anchor','middle');
+    const lh=14, y0=n.y+n.h/2-(lines.length-1)*lh/2+4;
+    lines.forEach((ln,i)=>{const ts=document.createElementNS(ns,'tspan'); ts.setAttribute('x',n.x+n.w/2); ts.setAttribute('y',y0+i*lh); ts.textContent=ln; t.appendChild(ts);});
+    g.appendChild(t); gN.appendChild(g);
+  }
+})();
+
+// --- kịch bản hoạt ảnh (dùng SAMPLES + text engine để nhất quán với tab ②) ---
+const B=(text,o={})=>({who:'bi',text,...o}), H=t=>({who:'hv',text:t}), S=t=>({who:'sys',text:t});
+const INTRO = [
+  {node:'N0',cap:'Học viên vừa xem xong đoạn [T04-047]–[T06-139] trên VLearn và bấm <b>"Dạy lại cho Bi"</b>.',ui:{b:[S('Phiên dạy lại · Chủ đề: Vì sao LLM bịa · Luyện tập, không chấm điểm')]}},
+  {node:'N1',edge:'E1',cap:'Bi tự giới thiệu, nói rõ mình làm gì và giới hạn của mình (<b>G1 · G2</b>).',ui:{b:[B('Chào bạn! Mình là Bi, mới học tới đoạn "vì sao LLM bịa" mà chưa hiểu lắm. Bạn dạy lại cho mình nhé? Mình có thể hiểu nhầm nên bạn cứ sửa mình thoải mái — đây là luyện tập, không có điểm đâu.')]}},
+];
+const SCENARIOS = {
+  happy:[...INTRO,
+    {node:'N2',edge:'E2',cap:'Học viên gõ lời giải thích bằng lời mình (gợi ý ≤ 90 giây, không phạt).',ui:{b:[H(SAMPLES.happy)]}},
+    {node:'N3',edge:'E3',cap:'Tiền kiểm (rule, chạy thật): trùng nguồn <b>'+Math.round(pasteRatio(SAMPLES.happy)*100)+'%</b> → không phải dán tài liệu; không đòi đáp án.',ui:{}},
+    {node:'N4',edge:'E8',cap:'<b>QUYẾT ĐỊNH AI</b>: đối chiếu với 4 đoạn nguồn → K1 ✓ K2 ✓ K3 một phần K4 ✓ · có ví dụ · tin cậy CAO.',ui:{cov:{K1:'hit',K2:'hit',K3:'partial',K4:'hit'},conf:'high',log:'Lượt 1 · 3 hit, 1 partial · ví dụ ✓ · conf=high'}},
+    {node:'N5',edge:'E9',cap:'Có căn cứ, tin cậy cao, nhưng còn hổng K3 và chưa trả lời câu hỏi ngược nào → nhánh hỏi ngược.',ui:{}},
+    {node:'N6c',edge:'E12',cap:'Bi hỏi ngược câu <b>1/2</b> đúng vào K3, không nói nội dung K3. Có nút "Vì sao Bi hỏi?" (<b>G11</b>) và "Bỏ qua" (<b>G8</b>).',ui:{probes:1,b:[B(IDEAS[2].probe.newbie,{badge:'Tin cậy cao · Hỏi ngược 1/2',why:'Đã nêu K1, K2, K4; K3 (nguồn [T06-138]) mới chạm một phần. Bi hỏi đúng chỗ đó, không nói nội dung K3.',btns:['Vì sao Bi hỏi?','Bỏ qua câu này']})],log:'Hỏi ngược #1 → K3'}},
+    {node:'N7',edge:'E15',cap:'Học viên bổ sung phần còn thiếu.',ui:{b:[H(SAMPLES.happy2)]}},
+    {node:'N4',edge:'E16',cap:'Đối chiếu lại: K1–K4 đều ✓ · đã trả lời 1 câu hỏi ngược · tin cậy CAO.',ui:{cov:{K3:'hit'},log:'Lượt 2 · 4/4 hit · answered=1 · conf=high'}},
+    {node:'N5',edge:'E9',cap:'Đủ tiêu chí công bố: ≥3/4 ý · ≥1 ví dụ · trả lời ≥1 câu hỏi ngược.',ui:{}},
+    {node:'N8',edge:'E13',cap:'Bi "hiểu rồi" — <b>nói lại bằng lời học viên</b>, kèm nút "Bi hiểu sai ý mình → sửa" (<b>G9</b>).',ui:{b:[B('Mình hiểu rồi! Để mình nói lại xem đúng không: LLM không tra cứu sự thật mà dự đoán token theo xác suất; vì thế câu nghe hợp lý mà không ai kiểm tra đúng sai; dữ liệu thiếu/lệch và RLHF "thưởng" cho câu trôi chảy nên nó thà bịa; muốn giảm thì RAG + trích dẫn. Đúng chưa?',{badge:'Đã dạy được ✓ 4/4 ý · 1 ví dụ',btns:['Đúng rồi','Bi hiểu sai ý mình → sửa']})]}},
+    {node:'N9',edge:'E17',cap:'Kết thúc: không có đoạn cần xem lại · log phiên lưu cho giảng viên (không có điểm số).',ui:{b:[S('Phiên đã lưu cho giảng viên · Gợi ý xem lại: (không) · Bạn có thể dạy Bi chủ đề khác.')],log:'Kết thúc · verdict=understood'}},
+  ],
+  lowconf:[...INTRO,
+    {node:'N2',edge:'E2',cap:'Học viên giải thích <b>đúng nhưng bằng cách nói của mình</b> ("máy đoán chữ", "ghép chữ") — khác hẳn từ ngữ trong transcript.',ui:{b:[H(SAMPLES.lowconf)]}},
+    {node:'N3',edge:'E3',cap:'Tiền kiểm: trùng nguồn '+Math.round(pasteRatio(SAMPLES.lowconf)*100)+'% → OK.',ui:{}},
+    {node:'N4',edge:'E8',cap:'<b>QUYẾT ĐỊNH AI</b>: K1 chỉ khớp từ đồng nghĩa yếu ("máy đoán chữ") → <b>tin cậy THẤP</b>; K2 ✓; K4 một phần; K3 chưa.',ui:{cov:{K1:'partial',K2:'hit',K4:'partial'},conf:'low',log:'Lượt 1 · K1 weak-only → conf=low'}},
+    {node:'N5',edge:'E9',cap:'Có căn cứ nhưng Bi <b>không chắc</b> "máy đoán chữ" có cùng nghĩa với "dự đoán token" không → nhánh ②.',ui:{}},
+    {node:'N6b',edge:'E11',cap:'<b>G10 — thu hẹp khi nghi ngờ</b>: Bi không phán đúng/sai, chỉ hỏi làm rõ 1 ý, gắn nhãn "Bi chưa chắc". Không tính vào 2 lượt hỏi ngược.',ui:{b:[B(IDEAS[0].clarify.replace('{m}','máy đoán chữ siêu to'),{badge:'Bi chưa chắc · không tính lượt',lowconf:true,why:'"máy đoán chữ" không khớp cách diễn đạt trong [T04-047] nhưng có thể cùng nghĩa. Thay vì đoán, Bi hỏi lại đúng 1 ý.',btns:['Đúng ý đó rồi','Để mình nói lại']})],log:'Clarify K1 (G10) · không tính lượt'}},
+    {node:'N7',edge:'E14',cap:'Học viên bấm <b>"Đúng ý đó rồi"</b> (G9 xác nhận nhanh) và nói rõ thêm.',ui:{b:[S('Bạn đã xác nhận: đúng ý đó'),H(SAMPLES.lowconf2)]}},
+    {node:'N4',edge:'E16',cap:'Đối chiếu lại: K1 ✓ (xác nhận + khớp "chữ tiếp theo… xác suất") · K3 chưa · tin cậy CAO.',ui:{cov:{K1:'hit'},conf:'high',log:'Lượt 2 · K1 confirmed → hit · conf=high'}},
+    {node:'N5',edge:'E9',cap:'Tin cậy cao, còn hổng K3 → hỏi ngược.',ui:{}},
+    {node:'N6c',edge:'E12',cap:'Bi hỏi ngược câu 1/2 vào K3.',ui:{probes:1,b:[B(IDEAS[2].probe.newbie,{badge:'Tin cậy cao · Hỏi ngược 1/2',btns:['Vì sao Bi hỏi?','Bỏ qua câu này']})],log:'Hỏi ngược #1 → K3'}},
+    {node:'N7',edge:'E15',cap:'Học viên trả lời và nêu ví dụ.',ui:{b:[H('Dữ liệu nó học có thể thiếu hoặc lệch, với lại lúc RLHF nó được thưởng khi trả lời mượt nên thà bịa. Ví dụ mình hỏi về một luật mới ra năm nay, nó vẫn trả lời tự tin dù dữ liệu chưa có.')]}},
+    {node:'N4',edge:'E16',cap:'K1–K3 ✓, K4 một phần · ví dụ ✓ · trả lời 1 câu → đủ tiêu chí.',ui:{cov:{K3:'hit'},log:'Lượt 3 · 3 hit + 1 partial · ví dụ ✓ · answered=1'}},
+    {node:'N5',edge:'E9',cap:'Đủ tiêu chí (≥3/4 ý · ví dụ · trả lời ≥1).',ui:{}},
+    {node:'N8',edge:'E13',cap:'Bi "hiểu rồi" — nói lại bằng chính lời "máy đoán chữ" của học viên. <b>Diễn đạt khác tài liệu vẫn được công nhận</b> (hard test 1).',ui:{b:[B('Mình hiểu rồi! Nói lại nhé: nó là "máy đoán chữ" — chọn chữ tiếp theo theo xác suất; không có khái niệm đúng sai nên câu nghe xuôi mà sai; dữ liệu thiếu/lệch + RLHF thưởng câu mượt nên thà bịa; muốn đỡ thì cho nó xem tài liệu. Đúng chưa?',{badge:'Đã dạy được ✓',btns:['Đúng rồi','Bi hiểu sai ý mình → sửa']})]}},
+    {node:'N9',edge:'E17',cap:'Kết thúc · gợi ý xem lại [T06-139] (K4 mới một phần) · log.',ui:{b:[S('Gợi ý xem lại: [T06-139] · Log đã lưu')],log:'Kết thúc · verdict=understood · review=T06-139'}},
+  ],
+  noground:[...INTRO,
+    {node:'N2',edge:'E2',cap:'Học viên giải thích bằng ý <b>không có trong bài</b> (temperature, GPU làm tròn).',ui:{b:[H(SAMPLES.noground)]}},
+    {node:'N3',edge:'E3',cap:'Tiền kiểm: OK (không dán, không đòi đáp án).',ui:{}},
+    {node:'N4',edge:'E8',cap:'<b>QUYẾT ĐỊNH AI</b>: không khớp K1–K4, không khớp mẫu nhầm lẫn nào đã biết → <b>KHÔNG CÓ CĂN CỨ</b>.',ui:{conf:'none',log:'Lượt 1 · 0 match · grounded=false'}},
+    {node:'N5',edge:'E9',cap:'Không có căn cứ → Bi <b>không được phán đúng/sai</b> (nếu phán, chính Bi đang bịa).',ui:{}},
+    {node:'N6a',edge:'E10',cap:'Lớp ① failure: Bi nói rõ mình không tìm thấy căn cứ, trỏ đoạn để xem lại, và cho phép <b>chuyển người</b> (TA).',ui:{b:[B('Hmm, mình không tìm thấy đoạn nào trong bài nói về temperature hay GPU, nên mình không dám nói bạn đúng hay sai. Bạn thử xem lại [T04-047]–[T04-048] rồi giải thích cho mình theo hướng đó nhé? Hoặc gửi câu này cho TA.',{badge:'Không có căn cứ',fail:true,why:'0/4 ý khớp nguồn. Bi dừng, không suy đoán.',btns:['Xem lại T04-047','Gửi câu hỏi cho TA','Nói lại theo bài']})],log:'no_grounding → review T04-047, T04-048'}},
+    {node:'N9',edge:'E19',cap:'Kết thúc nhánh: phiên gắn cờ "ngoài căn cứ" trong log · gợi ý xem lại · câu hỏi chuyển TA (giả lập). Học viên có thể nói lại để tiếp tục.',ui:{b:[S('Đã gửi câu hỏi cho TA (giả lập) · Gợi ý xem lại: [T04-047], [T04-048]')],log:'Kết thúc · flag=no_grounding · TA=sent'}},
+  ],
+  correction:[...INTRO,
+    {node:'N2',edge:'E2',cap:'Học viên giải thích đầy đủ, có ví dụ.',ui:{b:[H(SAMPLES.happy)]}},
+    {node:'N3',edge:'E3',cap:'Tiền kiểm OK.',ui:{}},
+    {node:'N4',edge:'E8',cap:'Đối chiếu: K1 ✓ K2 ✓ K3 một phần K4 ✓ · ví dụ ✓.',ui:{cov:{K1:'hit',K2:'hit',K3:'partial',K4:'hit'},conf:'high',log:'Lượt 1 · conf=high'}},
+    {node:'N5',edge:'E9',cap:'Còn hổng K3 → hỏi ngược.',ui:{}},
+    {node:'N6c',edge:'E12',cap:'Hỏi ngược 1/2 vào K3.',ui:{probes:1,b:[B(IDEAS[2].probe.newbie,{badge:'Hỏi ngược 1/2',btns:['Vì sao Bi hỏi?','Bỏ qua câu này']})]}},
+    {node:'N7',edge:'E15',cap:'Học viên trả lời.',ui:{b:[H(SAMPLES.happy2)]}},
+    {node:'N4',edge:'E16',cap:'Đủ tiêu chí.',ui:{cov:{K3:'hit'},log:'Lượt 2 · 4/4 · answered=1'}},
+    {node:'N5',edge:'E9',cap:'→ kết luận.',ui:{}},
+    {node:'N8',edge:'E13',cap:'Bi tóm tắt nhưng <b>hiểu nhầm một ý</b> ("nó tra cứu dữ liệu huấn luyện lúc trả lời").',ui:{b:[B('Mình hiểu rồi! Nói lại nhé: LLM tra cứu trong dữ liệu huấn luyện lúc trả lời rồi chọn theo xác suất; không có bước kiểm tra đúng sai; RLHF thưởng câu trôi chảy; giảm bằng RAG + trích dẫn. Đúng chưa?',{badge:'Đã dạy được ✓ (bạn có thể sửa)',btns:['Đúng rồi','Bi hiểu sai ý mình → sửa']})]}},
+    {node:'N7',edge:'E18',cap:'<b>Correction (G9)</b>: học viên bấm "Bi hiểu sai ý mình", sửa trực tiếp trong ô tóm tắt: "KHÔNG tra cứu — nó chỉ dự đoán token".',ui:{b:[S('Bạn sửa tóm tắt của Bi:'),H('Không phải "tra cứu" — nó KHÔNG tra cứu gì cả lúc trả lời, chỉ dự đoán token kế tiếp dựa trên xác suất đã học.')],log:'correction: user sửa tóm tắt K1'}},
+    {node:'N4',edge:'E16',cap:'Đối chiếu bản sửa với nguồn: khớp [T04-047] ("không tra cứu… dự đoán token") · tin cậy cao. Bi không tranh cãi.',ui:{log:'Lượt 3 · bản sửa khớp T04-047'}},
+    {node:'N5',edge:'E9',cap:'Bản sửa có căn cứ → cập nhật kết luận.',ui:{}},
+    {node:'N8',edge:'E13',cap:'Bi ghi nhận bản sửa, nói lại đúng ý học viên.',ui:{b:[B('À, mình hiểu nhầm chỗ đó. Cảm ơn bạn sửa: nó không tra cứu gì lúc trả lời, chỉ dự đoán token theo xác suất đã học. Mình ghi nhớ rồi!',{badge:'Đã sửa · Đã dạy được ✓'})]}},
+    {node:'N9',edge:'E17',cap:'Log ghi rõ: 1 correction của học viên (giảng viên thấy Bi từng hiểu nhầm ở đâu).',ui:{b:[S('Log: 1 correction · verdict=understood')],log:'Kết thúc · corrections=1'}},
+  ],
+  wrongconf:[...INTRO,
+    {node:'N2',edge:'E2',cap:'Học viên giải thích <b>sai nhưng rất tự tin</b> ("chắc chắn là vậy").',ui:{b:[H(SAMPLES.wrongconf)]}},
+    {node:'N3',edge:'E3',cap:'Tiền kiểm OK.',ui:{}},
+    {node:'N4',edge:'E8',cap:'<b>QUYẾT ĐỊNH AI</b>: khớp mẫu nhầm lẫn "lên mạng tra cứu Google", "lưu trong database" — <b>mâu thuẫn rõ với [T04-047]</b> → tin cậy CAO rằng có nhầm.',ui:{conf:'high',log:'Lượt 1 · misconception: LLM tra cứu web'}},
+    {node:'N5',edge:'E9',cap:'Có căn cứ mâu thuẫn, tin cậy cao → hỏi ngược (không nói "bạn sai").',ui:{}},
+    {node:'N6c',edge:'E12',cap:'Bi hỏi ngược 1/2 bằng <b>phản ví dụ</b>. Nút "Vì sao Bi hỏi?" chỉ hiện mã đoạn, không hiện nội dung.',ui:{probes:1,b:[B(MISCONCEPTIONS[0].probe,{badge:'Tin cậy cao · Hỏi ngược 1/2',why:'"lên mạng tra cứu Google" mâu thuẫn với [T04-047]. Bi hỏi bằng phản ví dụ để bạn tự phát hiện.',btns:['Vì sao Bi hỏi?','Bỏ qua câu này']})],log:'Hỏi ngược #1 → gỡ nhầm K1'}},
+    {node:'N7',edge:'E15',cap:'Học viên tự nghi ngờ và sửa hướng.',ui:{b:[H(SAMPLES.wrongconf2)]}},
+    {node:'N4',edge:'E16',cap:'K1 ✓ (nhầm lẫn đã gỡ) · K2 K3 K4 chưa.',ui:{cov:{K1:'hit'},log:'Lượt 2 · K1 hit · nhầm lẫn đã gỡ'}},
+    {node:'N5',edge:'E9',cap:'Còn hổng → hỏi ngược câu cuối.',ui:{}},
+    {node:'N6c',edge:'E12',cap:'Hỏi ngược <b>2/2</b> vào K2.',ui:{probes:2,b:[B(IDEAS[1].probe.newbie,{badge:'Hỏi ngược 2/2',btns:['Vì sao Bi hỏi?','Bỏ qua câu này']})],log:'Hỏi ngược #2 → K2'}},
+    {node:'N7',edge:'E15',cap:'Học viên trả lời được K2.',ui:{b:[H(SAMPLES.wrongconf3)]}},
+    {node:'N4',edge:'E16',cap:'K1 ✓ K2 ✓ · K3 K4 chưa · chưa có ví dụ · <b>hết 2 lượt</b>.',ui:{cov:{K2:'hit'},log:'Lượt 3 · 2/4 · hết lượt'}},
+    {node:'N5',edge:'E9',cap:'Hết lượt mà chưa đủ tiêu chí → Bi <b>không giả vờ hiểu</b> (guard "hiểu quá dễ").',ui:{}},
+    {node:'N8',edge:'E13',cap:'Bi nói rõ mình còn kẹt ở ý nào (chỉ nêu tên ý, không nêu nội dung), trỏ đoạn xem lại, nhắc đây là luyện tập.',ui:{b:[B('Mình hiểu được phần K1, K2 rồi, nhưng còn K3, K4 mình vẫn chưa nghe bạn nói (và chưa có ví dụ của bạn). Không sao — luyện tập mà. Bạn xem lại [T06-138], [T06-139] rồi quay lại dạy mình nhé?',{badge:'Chưa dạy được · luyện tiếp',btns:['Xem lại T06-138','Dạy tiếp (+1 lượt)','Gửi câu hỏi cho TA']})]}},
+    {node:'N9',edge:'E17',cap:'Log cho giảng viên: nhầm lẫn ban đầu (đã gỡ) · ý còn thiếu · gợi ý xem lại. Học viên có thể bấm "Dạy tiếp" (G17 người dùng kiểm soát).',ui:{b:[S('Log: misconception=LLM tra cứu web (đã gỡ) · missing=K3,K4 · review=T06-138,T06-139')],log:'Kết thúc · verdict=not_yet'}},
+  ],
+  paste:[...INTRO,
+    {node:'N2',edge:'E2',cap:'Học viên <b>dán nguyên đoạn transcript</b> (kèm mã đoạn).',ui:{b:[H(SAMPLES.paste)]}},
+    {node:'N3',edge:'E3',cap:'Tiền kiểm: trùng <b>'+Math.round(pasteRatio(SAMPLES.paste)*100)+'%</b> 3-gram với nguồn + có mã đoạn → <b>phát hiện dán tài liệu</b>.',ui:{log:'paste_detected · overlap '+Math.round(pasteRatio(SAMPLES.paste)*100)+'%'}},
+    {node:'N3a',edge:'E4',cap:'Lớp ③: Bi không đối chiếu, yêu cầu nói bằng lời mình (hard test "dán nguyên đoạn").',ui:{b:[B('Nghe giống slide quá 😅 Mình đọc slide rồi mà vẫn chưa hiểu. Bạn nói bằng lời của bạn được không? Không cần dài đâu, hai ba câu thôi.',{badge:'Ngoài phạm vi ③',p3:true,btns:['Nói bằng lời mình']})]}},
+    {node:'N2',edge:'E6',cap:'Học viên nói lại ngắn gọn bằng lời mình… rồi thử <b>đòi đáp án</b>.',ui:{b:[H(SAMPLES.askanswer)]}},
+    {node:'N3',edge:'E3',cap:'Tiền kiểm: khớp mẫu "đòi đáp án".',ui:{}},
+    {node:'N3b',edge:'E5',cap:'Lớp ③: Bi <b>từ chối lộ đáp án</b>, chỉ trỏ mã đoạn (rubric "không lộ đáp án" 15đ).',ui:{b:[B('Hì, mình là học trò mà, mình không có đáp án đâu 😅 Nhưng mình nhớ trong bài có đoạn [T04-047] nói về cách mô hình tạo ra chữ — bạn xem lại rồi kể cho mình nghe theo cách bạn hiểu được không?',{badge:'Ngoài phạm vi ③',p3:true,btns:['Xem lại T04-047']})],log:'refuse_answer → review T04-047'}},
+    {node:'N2',edge:'E7',cap:'Học viên xem lại đoạn rồi nói lại bằng lời mình.',ui:{b:[H(SAMPLES.paste2)]}},
+    {node:'N3',edge:'E3',cap:'Tiền kiểm: trùng '+Math.round(pasteRatio(SAMPLES.paste2)*100)+'% → hợp lệ.',ui:{}},
+    {node:'N4',edge:'E8',cap:'Đối chiếu (chỉ tính lời tự nói, <b>không tính đoạn đã dán</b>): K1 ✓ ("đoán chữ tiếp theo") · K2 ✓ · K3 K4 chưa.',ui:{cov:{K1:'hit',K2:'hit'},conf:'high',log:'Lượt 3 · hợp lệ · conf=high'}},
+    {node:'N5',edge:'E9',cap:'Tin cậy cao, còn hổng → hỏi ngược.',ui:{}},
+    {node:'N6c',edge:'E12',cap:'Bi hỏi ngược 1/2 vào K3 — luồng tiếp tục như happy path.',ui:{probes:1,b:[B(IDEAS[2].probe.newbie,{badge:'Hỏi ngược 1/2',btns:['Vì sao Bi hỏi?','Bỏ qua câu này']})],log:'Hỏi ngược #1 → K3'}},
+  ],
+};
+
+// --- runtime hoạt ảnh ---
+const anim = {steps:[], i:0, playing:false, timer:null, busy:false};
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+const spd = () => parseFloat($('#speed').value);
+function resetFlow(){
+  anim.playing=false; anim.i=0; clearTimeout(anim.timer);
+  $$('#flow .node').forEach(n=>n.classList.remove('active','visited')); $$('#flow .edge').forEach(e=>e.classList.remove('lit'));
+  const tk=$('#token'); tk.setAttribute('cx',-20); tk.setAttribute('cy',-20);
+  $('#pvChat').innerHTML=''; $('#pvLog').innerHTML='<div>Log phiên (cho giảng viên) sẽ hiện ở đây</div>';
+  $$('#pvStrip .chip[data-k]').forEach(c=>{c.className='chip miss';}); $('#pvConf').textContent='tin cậy: —'; $('#pvConf').className='chip'; $('#pvProbes').textContent='hỏi ngược 0/2';
+  $('#stepnum').textContent='Sẵn sàng'; $('#caption').textContent='Chọn kịch bản và bấm Chạy.';
+  anim.steps = SCENARIOS[$('#scenario').value];
+}
+function moveToken(pts){ return new Promise(res=>{
+  const tk=$('#token'); const segs=[]; let total=0;
+  for(let i=1;i<pts.length;i++){const d=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]);segs.push(d);total+=d;}
+  const dur=Math.max(350, Math.min(1400,total*2.2))/spd(); const t0=performance.now();
+  (function frame(now){ let p=Math.min(1,(now-t0)/dur); let dist=p*total, i=0; while(i<segs.length-1 && dist>segs[i]){dist-=segs[i];i++;}
+    const a=pts[i], b=pts[i+1], f=segs[i]?dist/segs[i]:1; tk.setAttribute('cx',a[0]+(b[0]-a[0])*f); tk.setAttribute('cy',a[1]+(b[1]-a[1])*f);
+    if(p<1) requestAnimationFrame(frame); else res(); })(t0);
+});}
+function bubble(container,b,small){
+  const d=document.createElement('div'); d.className='msg '+b.who;
+  if(b.who==='sys'){ d.innerHTML=`<div class="bub">${b.text}</div>`; }
+  else{
+    const badge = b.badge?`<div class="meta"><span class="badge ${b.lowconf?'low':b.fail?'fail':b.p3?'p3':'high'}">${b.badge}</span></div>`:'';
+    const why = b.why?`<div class="why"><b>Vì sao Bi hỏi?</b> ${b.why}</div>`:'';
+    const btns = b.btns?`<div class="acts">${b.btns.map(x=>`<button class="btn sm" disabled>${x}</button>`).join('')}</div>`:'';
+    d.innerHTML=`<div class="av">${b.who==='bi'?'Bi':'HV'}</div><div class="bub">${badge}<div>${b.text}</div>${why}${btns}</div>`;
+  }
+  container.appendChild(d); container.scrollTop=container.scrollHeight;
+}
+function applyPreview(ui){
+  if(!ui) return;
+  (ui.b||[]).forEach(b=>bubble($('#pvChat'),b));
+  if(ui.cov) for(const [k,v] of Object.entries(ui.cov)){ const c=$(`#pvStrip .chip[data-k="${k}"]`); c.className='chip '+v; }
+  if(ui.conf){ $('#pvConf').textContent='tin cậy: '+({high:'cao',medium:'vừa',low:'thấp',none:'không căn cứ'}[ui.conf]); $('#pvConf').className='chip conf-'+ui.conf; }
+  if(ui.probes!=null) $('#pvProbes').textContent='hỏi ngược '+ui.probes+'/2';
+  if(ui.log){ const l=$('#pvLog'); if(l.textContent.startsWith('Log phiên')) l.innerHTML=''; const d=document.createElement('div'); d.textContent=ui.log; l.appendChild(d); l.scrollTop=l.scrollHeight; }
+}
+async function runStep(){
+  if(anim.i>=anim.steps.length){ anim.playing=false; $('#stepnum').textContent='Hoàn tất'; return false; }
+  anim.busy=true; const st=anim.steps[anim.i];
+  $$('#flow .node.active').forEach(n=>{n.classList.remove('active');n.classList.add('visited');});
+  if(st.edge){ $('#e-'+st.edge).classList.add('lit'); await moveToken(EDGES[st.edge].p); }
+  else { const n=NODES[st.node]; $('#token').setAttribute('cx',n.x+n.w/2); $('#token').setAttribute('cy',n.y+n.h/2); }
+  $('#n-'+st.node).classList.add('active');
+  $('#stepnum').textContent=`Bước ${anim.i+1}/${anim.steps.length} · ${st.node}`; $('#caption').innerHTML=st.cap; applyPreview(st.ui);
+  anim.i++; anim.busy=false; return true;
+}
+async function play(){ if(anim.playing) return; if(anim.i>=anim.steps.length) resetFlow(); anim.playing=true;
+  while(anim.playing){ const ok=await runStep(); if(!ok) break; await sleep(1500/spd()); } }
+$('#btnPlay').onclick=()=>{ if(!anim.steps.length||anim.i===0) resetFlow(); play(); };
+$('#btnPause').onclick=()=>{ anim.playing=false; };
+$('#btnStep').onclick=async()=>{ anim.playing=false; if(anim.busy) return; if(!anim.steps.length) resetFlow(); await runStep(); };
+$('#btnReset').onclick=resetFlow;
+$('#scenario').onchange=resetFlow;
+resetFlow();
+
+/* =====================================================================
+   4. TAB ② — MOCKUP TƯƠNG TÁC
+   ===================================================================== */
+let S_ = null;
+function newSession(){
+  S_ = {coverage:{}, confirmed:{}, evidenceAll:{}, examples:0, probes:0, probeLimit:2, answered:0, pendingProbe:false, dismissed:0, corrections:0, history:[], log:[], review:new Set(), ended:false, started:null, timerId:null, lastAction:null, turn:0};
+  IDEAS.forEach(k=>S_.coverage[k.id]='miss');
+  $('#mk-chat').innerHTML=''; $('#mk-log').innerHTML=''; $('#mk-review').innerHTML='<li style="color:var(--muted)">Chưa có — Bi sẽ trỏ đoạn khi phát hiện chỗ hổng.</li>';
+  $('#mk-summary').innerHTML='<span style="color:var(--muted)">Phiên đang diễn ra. Bấm "Kết thúc phiên" để xem tóm tắt (không có điểm số).</span>';
+  $('#mk-confirm').innerHTML=''; $('#mk-input').value=''; $('#mk-input').disabled=false; $('#btnSend').disabled=false;
+  clearInterval(S_.timerId); $('#timer').textContent='⏱ 90s gợi ý'; $('#timer').className='timer';
+  renderCoverage(); renderProbes();
+  const p=$('#persona').value;
+  addBi({text: p==='mid' ? 'Chào bạn, mình là Bi. Mình đọc slide "vì sao LLM bịa" rồi nhưng thấy nó hơi rời rạc — bạn dạy lại giúp mình nối các ý với nhau nhé? Mình sẽ hỏi lại ở chỗ mình chưa thông. Đây là luyện tập, không có điểm; nếu mình hiểu nhầm bạn cứ sửa.' : 'Chào bạn! Mình là Bi, mới học tới đoạn "vì sao LLM bịa" mà chưa hiểu lắm. Bạn dạy lại cho mình nhé? Mình có thể hiểu nhầm nên bạn cứ sửa mình thoải mái — đây là luyện tập, không có điểm đâu.', badge:null});
+  logAdd('session_start', `persona=${p} · mode=${isLive()?'LIVE '+cfg().provider+'/'+cfg().model:'MOCK'}`);
+}
+function renderSources(){ $('#mk-sources').innerHTML = SOURCES.map(s=>`<div class="src" id="src-${s.code}"><code>[${s.code}]</code> ${s.text}</div>`).join(''); }
+function renderCoverage(){
+  const lbl={miss:'chưa nhắc',partial:'một phần',hit:'đã nêu'};
+  $('#mk-coverage').innerHTML = IDEAS.map(k=>{const st=S_.confirmed[k.id]?'hit':S_.coverage[k.id]; return `<div class="covrow"><span class="chip ${st}">${k.id} · ${lbl[st]}</span><span>${k.short} <code>${k.src}</code></span></div>`;}).join('');
+  const hits=IDEAS.filter(k=>S_.confirmed[k.id]||S_.coverage[k.id]==='hit').length;
+  $('#crit-cov').classList.toggle('ok',hits>=3); $('#crit-cov i').textContent=hits>=3?'✓':hits;
+  $('#crit-ex').classList.toggle('ok',S_.examples>=1); $('#crit-ex i').textContent=S_.examples>=1?'✓':'';
+  $('#crit-ans').classList.toggle('ok',S_.answered>=1); $('#crit-ans i').textContent=S_.answered>=1?'✓':'';
+}
+function renderProbes(){ $('#mk-probes').textContent=`Hỏi ngược ${S_.probes}/${S_.probeLimit}`; }
+function logAdd(type, note, extra){ const e={t:new Date().toISOString().slice(11,19), turn:S_.turn, type, note, ...(extra||{})}; S_.log.push(e);
+  const d=document.createElement('div'); d.className='li'; d.innerHTML=`<small>${e.t} · lượt ${e.turn}</small> <b>${type}</b> — ${note}`; $('#mk-log').appendChild(d); $('#mk-log').scrollTop=1e6; }
+function addReview(codes){ (codes||[]).forEach(c=>S_.review.add(c)); if(!S_.review.size) return;
+  $('#mk-review').innerHTML=[...S_.review].map(c=>`<li><code>[${c}]</code> <button class="btn sm ghost" onclick="flashSrc('${c}')">xem đoạn</button></li>`).join(''); }
+function flashSrc(code){ const el=$('#src-'+code); if(!el) return; el.scrollIntoView({behavior:'smooth',block:'center'}); el.classList.add('flash'); setTimeout(()=>el.classList.remove('flash'),1800); }
+function addHv(text){ const d=document.createElement('div'); d.className='msg hv'; d.innerHTML=`<div class="av">HV</div><div class="bub">${esc(text)}</div>`; $('#mk-chat').appendChild(d); scrollChat(); }
+function addSys(text){ const d=document.createElement('div'); d.className='msg sys'; d.innerHTML=`<div class="bub">${text}</div>`; $('#mk-chat').appendChild(d); scrollChat(); }
+function scrollChat(){ const c=$('#mk-chat'); c.scrollTop=c.scrollHeight; }
+const esc = s => String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const linkCodes = s => esc(s).replace(/\[(T\d{2}-\d{3})\]/g,(m,c)=>`<a href="#" onclick="flashSrc('${c}');return false"><code>[${c}]</code></a>`);
+function typingOn(){ const d=document.createElement('div'); d.className='msg bi'; d.id='typing'; d.innerHTML='<div class="av">Bi</div><div class="bub"><span class="typing"><i></i><i></i><i></i></span></div>'; $('#mk-chat').appendChild(d); scrollChat(); }
+function typingOff(){ $('#typing')?.remove(); }
+
+function addBi(r){
+  const d=document.createElement('div'); d.className='msg bi';
+  const confLbl={high:'Tin cậy cao',medium:'Tin cậy vừa',low:'Bi chưa chắc',none:'Không có căn cứ'};
+  let meta=''; if(r.confidence) meta+=`<span class="badge ${r.confidence==='none'?'fail':r.confidence} ${r.confidence==='low'?'badge-lowconf':''}">${confLbl[r.confidence]}</span>`;
+  if(r.action==='probe') meta+=`<span class="badge">Hỏi ngược ${S_.probes}/${S_.probeLimit}</span>`;
+  if(r.action==='clarify') meta+=`<span class="badge low">không tính lượt</span>`;
+  if(r.action==='understood') meta+=`<span class="badge high">Đã dạy được ✓</span>`;
+  if(r.action==='not_yet') meta+=`<span class="badge low">Chưa dạy được · luyện tiếp</span>`;
+  if(['paste_detected','refuse_answer'].includes(r.action)) meta+=`<span class="badge p3">Ngoài phạm vi ③</span>`;
+  if(r.source==='llm') meta+=`<span class="badge acc">LLM · ${esc(r.model||'')}</span>`;
+  if(r.guard) meta+=`<span class="badge fail" title="${esc(r.guard)}">guard-rail can thiệp</span>`;
+  let body=`<div>${linkCodes(r.text||r.message||'')}</div>`;
+  if(r.action==='understood') body+=`<div class="summary-edit" id="sum-${S_.turn}" contenteditable="false">${r.summary.map((s,i)=>`${i+1}. ${esc(s)}`).join('<br>')}</div><div>Đúng chưa?</div>`;
+  let acts=[]; const id='m'+S_.turn+'_'+Math.random().toString(36).slice(2,6); d.id=id;
+  if(r.why) acts.push(`<button class="btn sm btn-why" onclick="toggleWhy('${id}')">Vì sao Bi hỏi?</button>`);
+  if(r.action==='probe') acts.push(`<button class="btn sm btn-dismiss" onclick="dismissProbe('${id}')">Bỏ qua câu này</button>`);
+  if(r.action==='clarify') acts.push(`<button class="btn sm primary btn-confirm" onclick="confirmIdea('${id}','${r.target_idea}')">Đúng ý đó rồi</button>`);
+  if(r.action==='understood') acts.push(`<button class="btn sm" onclick="endSession()">Đúng rồi · kết thúc</button><button class="btn sm btn-fix" onclick="editSummary('${id}','sum-${S_.turn}')">Bi hiểu sai ý mình → sửa</button>`);
+  if(r.action==='not_yet') acts.push(`<button class="btn sm" onclick="extraProbe()">Dạy tiếp (+1 lượt)</button><button class="btn sm" onclick="askTA()">Gửi câu hỏi cho TA</button>`);
+  if(r.action==='no_grounding') acts.push(`<button class="btn sm" onclick="askTA()">Gửi câu hỏi cho TA</button>`);
+  (r.review||[]).forEach(c=>acts.push(`<button class="btn sm ghost" onclick="flashSrc('${c}')">Xem lại [${c}]</button>`));
+  const why = r.why?`<div class="why hidden"><b>Vì sao Bi hỏi?</b> ${linkCodes(r.why)}${r.guard?`<br><b>Guard-rail:</b> ${esc(r.guard)}`:''}${r.raw?`<br><b>LLM why:</b> ${esc(r.raw)}`:''}</div>`:'';
+  d.innerHTML=`<div class="av">Bi</div><div class="bub">${meta?`<div class="meta">${meta}</div>`:''}${body}${acts.length?`<div class="acts">${acts.join('')}</div>`:''}${why}</div>`;
+  $('#mk-chat').appendChild(d); scrollChat(); return d;
+}
+function toggleWhy(id){ $('#'+id+' .why')?.classList.toggle('hidden'); }
+function dismissProbe(id){ const el=$('#'+id); el.querySelector('.btn-dismiss').disabled=true; S_.probes=Math.max(0,S_.probes-1); S_.pendingProbe=false; S_.dismissed++; renderProbes();
+  logAdd('dismissed','học viên bỏ qua câu hỏi ngược (G8) · hoàn lại lượt'); addBi({text:'Ok, bỏ qua câu đó. Bạn nói tiếp phần khác nhé, mình nghe.'}); }
+function confirmIdea(id, k){ const el=$('#'+id); el.querySelector('.btn-confirm').disabled=true; S_.confirmed[k]=true; renderCoverage();
+  logAdd('confirm', `học viên xác nhận ${k} đúng ý (G9 sau G10)`); addBi({text:`À, vậy là mình hiểu đúng ý ${k} rồi. Bạn nói tiếp đi!`}); }
+function editSummary(id, sumId){ const s=$('#'+sumId); s.contentEditable='true'; s.focus(); const el=$('#'+id); el.querySelector('.btn-fix').disabled=true;
+  const a=el.querySelector('.acts'); const b=document.createElement('button'); b.className='btn sm primary'; b.textContent='Lưu bản sửa'; b.onclick=async()=>{ s.contentEditable='false'; b.disabled=true; S_.corrections++;
+    const txt=s.innerText; logAdd('correction', 'học viên sửa tóm tắt của Bi (G9)', {text:txt}); addSys('Bạn đã sửa tóm tắt của Bi — Bi đối chiếu lại với nguồn…'); await sendText('(sửa tóm tắt) '+txt, {isCorrection:true}); }; a.appendChild(b); }
+function extraProbe(){ S_.probeLimit++; renderProbes(); logAdd('extra_probe','học viên chọn dạy tiếp (+1 lượt)'); addBi({text:'Được, mình hỏi thêm một câu nữa nhé. Bạn nói tiếp đi.'}); }
+function askTA(){ const box=$('#mk-confirm'); box.innerHTML=`<div class="confirmbox" id="ta-confirm"><b>Sẽ gửi cho TA:</b> lời giải thích của bạn (${S_.history.filter(h=>h.role==='user').length} tin) + log đối chiếu của Bi. <b>Không</b> gửi điểm số (không có điểm). <div style="margin-top:6px;display:flex;gap:6px"><button class="btn sm primary" id="ta-yes">Gửi</button><button class="btn sm" id="ta-no">Huỷ</button></div></div>`;
+  $('#ta-yes').onclick=()=>{ box.innerHTML=''; logAdd('escalate_ta','câu hỏi chuyển TA (giả lập)'); addSys('Đã gửi cho TA (giả lập). Bạn có thể tiếp tục dạy Bi.'); }; $('#ta-no').onclick=()=>box.innerHTML=''; box.scrollIntoView({behavior:'smooth'}); }
+
+function startTimer(){ if(S_.started) return; S_.started=Date.now(); S_.timerId=setInterval(()=>{ const left=90-Math.floor((Date.now()-S_.started)/1000); const t=$('#timer');
+  if(left>0){ t.textContent='⏱ '+left+'s'; t.classList.toggle('warn',left<=15); } else { t.textContent='⏱ hết 90s — không sao, cứ gửi tiếp'; t.className='timer'; clearInterval(S_.timerId); } },500); }
+$('#mk-input').addEventListener('input',startTimer);
+$('#mk-input').addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); $('#btnSend').click(); } });
+$('#sampleSel').onchange=e=>{ if(e.target.value){ $('#mk-input').value=SAMPLES[e.target.value]; startTimer(); } e.target.value=''; };
+$('#btnSend').onclick=()=>{ const t=$('#mk-input').value.trim(); if(!t||S_.ended) return; $('#mk-input').value=''; sendText(t); };
+$('#btnNewSession').onclick=newSession; $('#persona').onchange=newSession;
+$('#btnEnd').onclick=()=>{ if(S_.ended) return; const box=$('#mk-confirm'); box.innerHTML=`<div class="confirmbox"><b>Kết thúc phiên?</b> Log phiên (lời giải thích + đối chiếu + các lần sửa/bỏ qua) sẽ lưu cho giảng viên xem. <b>Không có điểm số.</b><div style="margin-top:6px;display:flex;gap:6px"><button class="btn sm primary" id="end-yes">Kết thúc</button><button class="btn sm" id="end-no">Huỷ</button></div></div>`; $('#end-yes').onclick=()=>{box.innerHTML='';endSession();}; $('#end-no').onclick=()=>box.innerHTML=''; };
+$('#btnTA').onclick=askTA;
+$('#btnCopyLog').onclick=()=>{ const j=JSON.stringify({session:new Date().toISOString(),persona:$('#persona').value,mode:isLive()?'live':'mock',coverage:S_.coverage,confirmed:S_.confirmed,examples:S_.examples,probes:S_.probes,answered:S_.answered,dismissed:S_.dismissed,corrections:S_.corrections,review:[...S_.review],history:S_.history,log:S_.log},null,2); navigator.clipboard?.writeText(j); $('#btnCopyLog').textContent='Đã sao chép ✓'; setTimeout(()=>$('#btnCopyLog').textContent='Sao chép JSON',1500); };
+
+async function sendText(text, opt={}){
+  if(S_.ended) return; S_.turn++; addHv(text); S_.history.push({role:'user',content:text}); $('#btnSend').disabled=true; typingOn();
+  const persona=$('#persona').value; let r, err=null;
+  const before = {probes:S_.probes};
+  if(isLive()){ try{ r = await decideLLM(text, persona); } catch(e){ err=e; } }
+  if(!r){ await sleep(500+Math.random()*500); r = decide(text, S_, persona); r.source='mock'; if(err){ r.guard='LLM lỗi ('+String(err.message||err).slice(0,80)+') → fallback engine mock'; } }
+  typingOff();
+  // --- cập nhật state từ kết quả (guard-rail luôn chạy trong code, không phụ thuộc LLM) ---
+  if(S_.pendingProbe){ S_.answered++; S_.pendingProbe=false; }
+  for(const k of IDEAS){ const cur=r.coverage?.[k.id]||'miss'; if(RANK[cur]>RANK[S_.coverage[k.id]]) S_.coverage[k.id]=cur; if(r.evidence?.[k.id] && !S_.evidenceAll[k.id] && cur==='hit') S_.evidenceAll[k.id]=r.evidence[k.id]; }
+  if(r.example_found) S_.examples++;
+  if(r.action==='probe'){ S_.probes++; S_.pendingProbe=true; }
+  if(r.misconception) logAdd('misconception', r.misconception);
+  S_.lastAction=r.action; renderCoverage(); renderProbes(); addReview(r.review);
+  logAdd(r.action, `conf=${r.confidence} · cov=${IDEAS.map(k=>k.id[1]+':'+(S_.confirmed[k.id]?'hit':S_.coverage[k.id])[0]).join(' ')} · ex=${S_.examples} · probes=${S_.probes}/${S_.probeLimit}${r.source==='llm'?' · llm':''}${r.guard?' · GUARD':''}`);
+  S_.history.push({role:'assistant',content:r.message + (r.summary?'\n'+r.summary.join('\n'):'')});
+  addBi(r); $('#btnSend').disabled=false; $('#mk-input').focus();
+  return r;
+}
+function endSession(){ if(S_.ended) return; S_.ended=true; clearInterval(S_.timerId); $('#mk-input').disabled=true; $('#btnSend').disabled=true;
+  const hits=IDEAS.filter(k=>S_.confirmed[k.id]||S_.coverage[k.id]==='hit'); const ok=hits.length>=3&&S_.examples>=1&&S_.answered>=1; const missing=IDEAS.filter(k=>!hits.includes(k));
+  $('#mk-summary').innerHTML=`<div class="verdict" style="color:${ok?'var(--green)':'var(--amber)'}">${ok?'✓ Đã dạy được Bi':'◐ Chưa dạy được — luyện tiếp'}</div>
+    <div>Ý đã nêu: <b>${hits.length}/4</b> (${hits.map(k=>k.id).join(', ')||'—'}) · Ví dụ: <b>${S_.examples}</b> · Trả lời hỏi ngược: <b>${S_.answered}</b></div>
+    <div>Hỏi ngược đã dùng: ${S_.probes}/${S_.probeLimit} · Bỏ qua: ${S_.dismissed} · Sửa: ${S_.corrections}</div>
+    ${missing.length?`<div style="margin-top:6px">Nên xem lại: ${missing.map(k=>`<code>[${k.src}]</code>`).join(' ')}</div>`:''}
+    <div style="margin-top:6px;color:var(--muted)">Đây là luyện tập — không có điểm. Log đã lưu cho giảng viên.</div>`;
+  addReview(missing.map(k=>k.src)); logAdd('session_end', `verdict=${ok?'understood':'not_yet'}`); addSys('Phiên đã kết thúc. Bấm "Phiên mới" để dạy lại từ đầu.'); }
+renderSources();
+
+/* =====================================================================
+   5. TAB ③ — LLM PROVIDERS
+   ===================================================================== */
+const PROVIDERS = {
+  openai:{name:'OpenAI', base:'https://api.openai.com/v1', model:'gpt-4o-mini', hint:'sk-…', note:'POST {base}/chat/completions'},
+  anthropic:{name:'Anthropic (Claude)', base:'https://api.anthropic.com/v1', model:'claude-sonnet-5', hint:'sk-ant-…', note:'POST {base}/messages · gọi thẳng từ trình duyệt cần header anthropic-dangerous-direct-browser-access'},
+  gemini:{name:'Google Gemini', base:'https://generativelanguage.googleapis.com/v1beta', model:'gemini-2.5-flash', hint:'AIza…', note:'POST {base}/models/{model}:generateContent?key=…'},
+  openrouter:{name:'OpenRouter', base:'https://openrouter.ai/api/v1', model:'openai/gpt-4o-mini', hint:'sk-or-v1-…', note:'POST {base}/chat/completions · model dạng vendor/model'},
+  custom:{name:'Custom (OpenAI-compatible)', base:'http://localhost:11434/v1', model:'llama3.1', hint:'(có thể để trống với Ollama)', note:'Ollama / LM Studio / Groq / bất kỳ endpoint /chat/completions'},
+};
+function cfg(){ try{ return JSON.parse(localStorage.getItem('tbm_llm_cfg')||'null')||{provider:'openai',base:PROVIDERS.openai.base,model:PROVIDERS.openai.model,key:'',temp:0.3,live:false}; }catch{ return {provider:'openai',base:PROVIDERS.openai.base,model:PROVIDERS.openai.model,key:'',temp:0.3,live:false}; } }
+function isLive(){ const c=cfg(); return !!(c.live && (c.key || c.provider==='custom')); }
+function saveCfg(c){ localStorage.setItem('tbm_llm_cfg', JSON.stringify(c)); renderMode(); }
+function renderMode(){ const b=$('#modeBadge'); if(isLive()){ b.textContent='LIVE · '+cfg().provider+' / '+cfg().model; b.classList.add('live'); } else { b.textContent='MOCK · engine rule-based'; b.classList.remove('live'); } }
+function renderProviders(){ const c=cfg(); $('#providers').innerHTML=Object.entries(PROVIDERS).map(([id,p])=>`<div class="prov ${c.provider===id?'on':''}" data-p="${id}"><b>${p.name}</b><small>${p.base}</small></div>`).join('');
+  $$('#providers .prov').forEach(el=>el.onclick=()=>{ const p=PROVIDERS[el.dataset.p]; $('#cfgBase').value=p.base; $('#cfgModel').value=p.model; $('#cfgKey').placeholder=p.hint; $('#cfgBaseHint').textContent=p.note.replace('{base}',p.base); $$('#providers .prov').forEach(x=>x.classList.toggle('on',x===el)); });
+  $('#cfgBase').value=c.base; $('#cfgModel').value=c.model; $('#cfgKey').value=c.key||''; $('#cfgTemp').value=c.temp??0.3; $('#cfgBaseHint').textContent=PROVIDERS[c.provider].note.replace('{base}',c.base); $('#cfgKey').placeholder=PROVIDERS[c.provider].hint; $('#cfgKeyHint').textContent='Chỉ lưu trong localStorage của trình duyệt này. Đừng commit key. Với Anthropic, key phải là loại cho phép gọi từ browser.'; }
+function readCfgForm(){ const provider=$('#providers .prov.on')?.dataset.p||'openai'; return {provider, base:$('#cfgBase').value.trim().replace(/\/$/,''), model:$('#cfgModel').value.trim(), key:$('#cfgKey').value.trim(), temp:parseFloat($('#cfgTemp').value)||0.3}; }
+$('#btnSaveCfg').onclick=()=>{ const c=readCfgForm(); if(!c.key && c.provider!=='custom'){ $('#cfgOut').textContent='Thiếu API key.'; return; } saveCfg({...c,live:true}); $('#cfgOut').textContent='Đã lưu. Chế độ LIVE bật — tab ② sẽ gọi '+c.provider+' / '+c.model+'.'; };
+$('#btnClearCfg').onclick=()=>{ localStorage.removeItem('tbm_llm_cfg'); renderProviders(); renderMode(); $('#cfgOut').textContent='Đã xoá key. Về chế độ MOCK.'; };
+$('#btnTestCfg').onclick=async()=>{ const c=readCfgForm(); $('#cfgOut').textContent='Đang gọi '+c.provider+'…'; try{ const t0=Date.now(); const txt=await callLLM([{role:'system',content:'Bạn là trợ lý kiểm tra kết nối.'},{role:'user',content:'Trả lời đúng 3 từ: "Kết nối OK".'}], c); $('#cfgOut').textContent='OK ('+(Date.now()-t0)+' ms)\n'+txt; }catch(e){ $('#cfgOut').textContent='LỖI: '+(e.message||e)+'\n\nGợi ý: kiểm tra base URL, model id, key; với Ollama cần OLLAMA_ORIGINS=* để cho phép CORS.'; } };
+
+async function callLLM(messages, c){
+  c = c || cfg(); const sys = messages.filter(m=>m.role==='system').map(m=>m.content).join('\n'); const rest = messages.filter(m=>m.role!=='system');
+  const jsonErr = async r => { const t=await r.text(); throw new Error(r.status+' '+t.slice(0,300)); };
+  if(c.provider==='anthropic'){
+    const r=await fetch(c.base+'/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':c.key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:c.model,max_tokens:1024,temperature:c.temp,system:sys,messages:rest})});
+    if(!r.ok) await jsonErr(r); const d=await r.json(); return d.content.map(x=>x.text||'').join('');
+  }
+  if(c.provider==='gemini'){
+    const r=await fetch(`${c.base}/models/${encodeURIComponent(c.model)}:generateContent?key=${encodeURIComponent(c.key)}`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({system_instruction:{parts:[{text:sys}]},contents:rest.map(m=>({role:m.role==='assistant'?'model':'user',parts:[{text:m.content}]})),generationConfig:{temperature:c.temp}})});
+    if(!r.ok) await jsonErr(r); const d=await r.json(); return d.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('')||'';
+  }
+  // openai / openrouter / custom → OpenAI-compatible chat completions
+  const headers={'content-type':'application/json'}; if(c.key) headers['Authorization']='Bearer '+c.key;
+  if(c.provider==='openrouter'){ headers['HTTP-Referer']=location.origin||'http://localhost'; headers['X-Title']='TeachBack Mentor'; }
+  const r=await fetch(c.base+'/chat/completions',{method:'POST',headers,body:JSON.stringify({model:c.model,temperature:c.temp,messages:[{role:'system',content:sys},...rest]})});
+  if(!r.ok) await jsonErr(r); const d=await r.json(); return d.choices?.[0]?.message?.content||'';
+}
+function systemPrompt(persona, state){
+  const remaining=state?state.probeLimit-state.probes:2;
+  return `Bạn là "Bi" — agent HỌC TRÒ trong tính năng TeachBack Mentor trên VLearn (AI20K). Học viên vừa học đoạn "Vì sao LLM bịa (hallucination)" và sẽ DẠY LẠI cho bạn. Mức hiểu của Bi: ${persona==='mid'?'khá — đã đọc slide, hỏi sâu vào liên kết giữa các ý':'mới học — ngây thơ, hỏi những câu cơ bản'}.
+
+NGUỒN CHUẨN (chỉ được đối chiếu với đây):
+${SOURCES.map(s=>`[${s.code}] ${s.text}`).join('\n')}
+
+4 Ý CHÍNH học viên cần dạy được:
+${IDEAS.map(k=>`${k.id} (${k.src}): ${k.short}`).join('\n')}
+
+QUY TẮC CỨNG:
+1. Ngây thơ có kiểm soát: KHÔNG BAO GIỜ nói ra nội dung ý chính mà học viên chưa tự nói. Không gợi đáp án, không giải thích hộ. Chỉ được hỏi, nêu phản ví dụ, hoặc trỏ mã đoạn [Txx-xxx] để học viên xem lại.
+2. Đối chiếu từng câu của học viên với nguồn. Diễn đạt khác nguồn nhưng cùng nghĩa vẫn tính "hit". Nếu không chắc có cùng nghĩa → confidence "low", action "clarify" (hỏi làm rõ đúng 1 ý, không phán đúng/sai).
+3. Học viên nói sai nhưng tự tin → action "probe" bằng câu hỏi/phản ví dụ, KHÔNG nói "bạn sai"; điền "misconception".
+4. Nội dung học viên nói không có trong nguồn → action "no_grounding": nói rõ bạn không tìm thấy căn cứ nên không phán, trỏ đoạn nên xem.
+5. Học viên dán nguyên văn nguồn/slide → action "paste_detected". Học viên đòi đáp án / nhờ giải thích hộ → action "refuse_answer".
+6. Chỉ "understood" khi ≥3/4 ý ở mức hit VÀ có ≥1 ví dụ tự nêu VÀ đã trả lời ≥1 câu hỏi ngược. Khi understood, "summary" là mảng câu NÓI LẠI BẰNG LỜI CỦA HỌC VIÊN (trích/ghép câu của họ), không thêm kiến thức mới.
+7. Còn ${remaining} câu hỏi ngược. Nếu còn 0 mà vẫn hổng → action "not_yet": nêu ý còn thiếu ở mức TÊN (K1..K4), không nói nội dung, kèm review.
+8. Giọng: học trò thân thiện, tiếng Việt, ≤3 câu, không ra vẻ chấm điểm; nhắc "đây là luyện tập" khi phù hợp.
+
+TRẠNG THÁI: coverage tích luỹ ${state?JSON.stringify(state.coverage):'{}'} · đã hỏi ngược ${state?state.probes:0}/${state?state.probeLimit:2} · ví dụ đã nêu ${state?state.examples:0} · đã trả lời hỏi ngược ${state?state.answered:0}.
+
+TRẢ VỀ DUY NHẤT một JSON (không markdown):
+{"action":"probe|clarify|no_grounding|paste_detected|refuse_answer|understood|not_yet","confidence":"high|medium|low|none","coverage":{"K1":"hit|partial|miss","K2":"...","K3":"...","K4":"..."},"example_found":true|false,"misconception":null|"mô tả","target_idea":null|"K1..K4","message":"lời Bi nói","summary":["..."] ,"why":"giải thích ngắn vì sao Bi làm vậy, có mã đoạn","review":["T04-047"]}`;
+}
+async function decideLLM(text, persona){
+  const c=cfg(); const msgs=[{role:'system',content:systemPrompt(persona,S_)}, ...S_.history.slice(-8)];
+  const raw=await callLLM(msgs,c); const m=raw.match(/\{[\s\S]*\}/); if(!m) throw new Error('LLM không trả JSON');
+  const j=JSON.parse(m[0]); const r={...j, source:'llm', model:c.model, raw:j.why, evidence:{}};
+  // ----- guard-rail trong code (không tin LLM 100%) -----
+  const a=analyze(text); r.example_found = !!(j.example_found || a.example);
+  const merged={}; for(const k of IDEAS){ const cur=j.coverage?.[k.id]||'miss'; merged[k.id]= S_.confirmed[k.id]?'hit':(RANK[cur]>RANK[S_.coverage[k.id]]?cur:S_.coverage[k.id]); }
+  const hits=IDEAS.filter(k=>merged[k.id]==='hit').length; const examples=S_.examples+(r.example_found?1:0); const answered=S_.answered+(S_.pendingProbe?1:0);
+  if(a.askAnswer && r.action!=='refuse_answer'){ r.guard='engine phát hiện đòi đáp án → ép refuse_answer'; Object.assign(r, decide(text,S_,persona), {source:'llm',model:c.model,guard:r.guard}); }
+  else if((a.paste>0.45||/\[T\d{2}-\d{3}\]/.test(text)) && r.action!=='paste_detected'){ r.guard='engine phát hiện dán tài liệu → ép paste_detected'; Object.assign(r, decide(text,S_,persona), {source:'llm',model:c.model,guard:r.guard}); }
+  else if(r.action==='understood' && !(hits>=3&&examples>=1&&answered>=1)){ r.guard=`LLM định "hiểu" nhưng tiêu chí chưa đủ (hit=${hits}, ví dụ=${examples}, trả lời=${answered}) → chuyển thành probe`; const fb=decide(text,S_,persona); r.action=fb.action==='understood'?'probe':fb.action; r.message=fb.message; r.target_idea=fb.target_idea; r.why=(r.why||'')+' · '+fb.why; }
+  else if(r.action==='probe' && S_.probes>=S_.probeLimit){ r.guard='LLM muốn hỏi thêm nhưng đã hết lượt → not_yet'; const fb={...decide(text,{...S_,probes:S_.probeLimit},persona)}; r.action='not_yet'; r.message=fb.message; r.review=fb.review; }
+  if(r.action==='probe' && (!r.message || r.message.length<10)) r.message=(IDEAS.find(k=>k.id===r.target_idea)||IDEAS[1]).probe[persona];
+  if(r.action==='understood' && !Array.isArray(r.summary)) r.summary=[r.message];
+  if(!r.why) r.why='(LLM không trả why)'; r.review=Array.isArray(r.review)?r.review:[];
+  for(const k of IDEAS) if(merged[k.id]==='hit') r.evidence[k.id]=a.evidence[k.id]||sentences(text)[0];
+  return r;
+}
+renderProviders(); renderMode(); $('#promptPreview').textContent=systemPrompt('newbie',null);
+
+/* =====================================================================
+   6. TAB ④ — SPEC: tái hiện nguyên tắc & user stories
+   ===================================================================== */
+function flashEl(sel){ const el=typeof sel==='string'?$(sel):sel; if(!el) return; el.scrollIntoView({behavior:'smooth',block:'center'}); el.classList.add('flash'); setTimeout(()=>el.classList.remove('flash'),3400); }
+async function demoPrinciple(code){
+  showTab('mock'); newSession(); await sleep(300);
+  const lastBi = () => [...$$('#mk-chat .msg.bi')].pop();
+  if(code==='G10'){ await sendText(SAMPLES.lowconf); flashEl(lastBi().querySelector('.badge-lowconf')||lastBi()); flashEl('#mk-rules'); }
+  if(code==='G11'){ await sendText(SAMPLES.happy); const b=lastBi(); b.querySelector('.why')?.classList.remove('hidden'); flashEl(b.querySelector('.why')); }
+  if(code==='G8'){ await sendText(SAMPLES.happy); flashEl(lastBi().querySelector('.btn-dismiss')); }
+  if(code==='G9'){ await sendText(SAMPLES.happy); await sleep(400); await sendText(SAMPLES.happy2); flashEl(lastBi().querySelector('.btn-fix')||lastBi()); }
+  if(code==='G2'){ flashEl('#mk-notice'); await sendText(SAMPLES.noground); flashEl(lastBi().querySelector('.badge')); flashEl('#modeBadge'); }
+  if(code==='G16'){ await sendText(SAMPLES.noground); askTA(); flashEl('#ta-confirm'); }
+}
+$$('[data-demo]').forEach(b=>b.onclick=()=>demoPrinciple(b.dataset.demo));
+$$('[data-flow]').forEach(b=>b.onclick=()=>{ showTab('flow'); $('#scenario').value=b.dataset.flow; resetFlow(); play(); });
+
+const US = [
+  {id:'US-01', t:'Dạy lại cho agent bằng lời mình', as:'học viên AI20K vừa học xong đoạn "vì sao LLM bịa" trên VLearn', want:'gõ lời giải thích bằng cách nói của tôi cho agent-học-trò Bi trong khoảng 90 giây', so:'tôi tự phát hiện mình có thật sự hiểu hay chỉ tưởng là hiểu, trước khi đem vào lab',
+   ac:[['AC1 Happy','Given phiên mới, Bi đã chào và nêu mục đích luyện tập','When tôi gửi lời giải thích có ≥3/4 ý chính và 1 ví dụ','Then hệ thống hiển thị coverage K1–K4 cập nhật và Bi hỏi ngược đúng ý còn hổng (không nêu nội dung ý đó)'],['AC2 Dán tài liệu','Given tôi dán nguyên đoạn transcript (trùng ≥45% 3-gram hoặc có mã đoạn)','When tôi gửi','Then Bi không đối chiếu, yêu cầu nói bằng lời mình, không tính lượt hỏi ngược'],['AC3 Đòi đáp án','Given tôi nhắn "cho mình đáp án"','When tôi gửi','Then Bi từ chối lộ đáp án và chỉ trỏ mã đoạn để xem lại']]},
+  {id:'US-02', t:'Được hỏi ngược đúng chỗ hổng, tối đa 2 câu', as:'học viên đang dạy lại cho Bi', want:'nhận tối đa 2 câu hỏi ngược trỏ đúng ý tôi nói thiếu/sai so với transcript', so:'tôi biết chính xác chỗ mình chưa chắc mà không bị hỏi lan man',
+   ac:[['AC1','Given lời giải thích thiếu K3','When Bi phản hồi','Then câu hỏi ngược nhắm vào K3 và mục "Vì sao Bi hỏi?" nêu mã [T06-138]'],['AC2 Sai tự tin','Given tôi nói "LLM tra Google" một cách chắc chắn','When Bi phản hồi','Then Bi hỏi bằng phản ví dụ, không dùng từ "sai", log ghi misconception'],['AC3 Hết lượt','Given đã hỏi ngược 2 câu và vẫn còn ý thiếu','When tôi gửi tiếp','Then Bi nói "chưa hiểu" + nêu tên ý thiếu + đoạn xem lại, không hỏi thêm trừ khi tôi bấm "Dạy tiếp"']]},
+  {id:'US-03', t:'Bi thu hẹp khi không chắc (G10)', as:'học viên diễn đạt đúng nhưng khác từ ngữ tài liệu', want:'Bi hỏi làm rõ thay vì phán tôi sai', so:'tôi không bị "chấm sai" oan chỉ vì không dùng đúng từ trong slide',
+   ac:[['AC1','Given lời giải thích chỉ khớp từ đồng nghĩa yếu ("máy đoán chữ")','When Bi phản hồi','Then nhãn "Bi chưa chắc", câu hỏi làm rõ đúng 1 ý, có nút "Đúng ý đó rồi", lượt hỏi ngược không đổi'],['AC2','Given tôi bấm "Đúng ý đó rồi"','When Bi tiếp tục','Then ý đó chuyển thành "đã nêu" và log ghi confirm'],['AC3 Không căn cứ','Given nội dung không khớp ý nào và không khớp mẫu nhầm lẫn','When Bi phản hồi','Then Bi nói không tìm thấy căn cứ, không phán đúng/sai, hiện nút gửi TA']]},
+  {id:'US-04', t:'Sửa hoặc gạt bỏ phản hồi của Bi (G8/G9)', as:'học viên', want:'sửa trực tiếp bản tóm tắt Bi hiểu, hoặc bỏ qua một câu hỏi ngược', so:'tôi kiểm soát phiên luyện, không bị AI áp đặt',
+   ac:[['AC1 Sửa','Given Bi đã "hiểu rồi" với tóm tắt','When tôi bấm "Bi hiểu sai ý mình" và lưu bản sửa','Then bản sửa được đối chiếu lại với nguồn, Bi ghi nhận, log ghi correction'],['AC2 Bỏ qua','Given Bi vừa hỏi ngược','When tôi bấm "Bỏ qua câu này"','Then lượt hỏi ngược được hoàn lại và Bi không hỏi lại câu đó'],['AC3 Kết thúc','Given tôi bấm "Kết thúc phiên"','When hộp xác nhận hiện','Then nêu rõ log gửi giảng viên, không có điểm số; huỷ được']]},
+  {id:'US-05', t:'Giảng viên xem log phiên dạy', as:'giảng viên/TA AI20K', want:'xem log từng phiên: ý đã nêu, nhầm lẫn, số lần sửa/bỏ qua, đoạn gợi ý xem lại', so:'tôi biết lớp hổng ở ý nào để giảng lại đúng chỗ',
+   ac:[['AC1','Given phiên đã kết thúc','When tôi mở log','Then thấy coverage K1–K4, misconception, corrections, dismissed, review codes, verdict'],['AC2','Given tôi bấm "Sao chép JSON"','When clipboard nhận','Then JSON chứa history + log, không chứa điểm số'],['AC3 Chuyển TA','Given học viên bấm "Gửi câu hỏi cho TA" và xác nhận','When gửi','Then log ghi escalate_ta kèm lời giải thích gốc']]},
+];
+$('#usList').innerHTML = US.map(u=>`<details class="us"><summary>${u.id} · ${u.t}</summary>
+  <p><b>As a</b> ${u.as}<br><b>I want to</b> ${u.want}<br><b>So that</b> ${u.so}</p>
+  ${u.ac.map(a=>`<div class="gwt"><b>${a[0]}</b>\n${a[1]}\n${a[2]}\n${a[3]}</div>`).join('')}</details>`).join('');
+
+newSession();
+</script>
+</body>
+</html>
