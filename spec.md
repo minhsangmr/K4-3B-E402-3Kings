@@ -1,83 +1,129 @@
-# Template AI Spec *(spec.md — commit trước hạn chốt spec: 21:00 17/9, tại CP4 · quality bar chốt từ thời điểm nộp)*
+# AI SPEC — TeachBack Mentor · Nhóm 3Kings · Zone E402
 
-> Cấu trúc phủ đúng "SPEC 8 phần" của chương trình: Bằng chứng (§1-§2) · Lát cắt (§4) · Canvas (đính kèm CP1) · Augment/Automate (§4) · 4 đường đi của trải nghiệm (§6) · Kiểu lỗi (§5) · Kiểm thử (§7) · Phân công (§8). Hướng dẫn viết từng mục: `02-guide.md`.
-
-```markdown
-# AI SPEC — [Tên lát cắt] · Nhóm [XX] · Zone [X]
 Hướng: [ ] A — VLearn  [ ] B — Trợ lý Học viên  [ ] C — Làn mở [x] D — Học tập thích ứng & tương tác
 Loại: [ ] Tối ưu tính năng có sẵn  [x] Tính năng mới
 
 ## §1. User & Job
-- Job executor + workflow (đính kèm worksheet JTBD / ảnh sơ đồ): **Học viên AI20K vừa học xong đoạn về "vì sao LLM bịa/hallucination" trên VLearn**, đang muốn chắc là mình hiểu trước khi đem kiến thức đó vào lab/prompt/debug sản phẩm AI.
-- Core JTBD (không tên sản phẩm/AI trong câu): Sau khi học một khái niệm nền khó, học viên cần tự nói lại bằng lời của mình, được hỏi ngược đúng chỗ hổng, và biết đoạn nào cần xem lại để đủ tự tin áp dụng vào bài lab hoặc sản phẩm.
-- Problem statement (KHÔNG chữ AI): Khi chỉ đọc slide hoặc hỏi tutor để được giải thích, học viên thường nhận một câu trả lời một chiều, không phải tự nói lại nên dễ tưởng là đã hiểu; hậu quả là khi làm lab hoặc build sản phẩm, bạn không nhận ra lỗ hổng về cơ chế LLM sinh token/hallucination cho đến lúc áp dụng sai.
-- Evidence (chuẩn A và/hoặc B — log đầy đủ trong repo):
-  - Số liệu mining / kết quả khảo sát: từ `eval/data/vlearn-pack/chatlog/tutor_turns.csv`, trong cohort K4 có `3.097` lượt tutor của `448` học viên, nhưng chỉ `6/3.097` lượt dùng `move_used = ask_probing_question` (`0,19%`) và chỉ `6/3.097` lượt có `understanding_level` (`0,19%`).
-  - Trong `457` câu tự gõ K4 có từ khóa `giải thích/giai thich/explain/tại sao/vì sao/why`, `448/457` lượt (`98,03%`) được xử lý kiểu trả lời/giải thích trực tiếp (`review_concept`, `give_direct_answer`, `give_example`).
-  - Ví dụ kiểm được: `T10317`, `T10321`, `T10354`, `T10355`, `T10408`, `T10413`.
-  - Nguồn bài học cho lát cắt: transcript có đoạn nêu LLM dự đoán token và có thể hallucinate vì sinh chuỗi theo xác suất (`[T04-047]`, `[T04-048]`), cùng đoạn giải thích hallucination do bias dữ liệu, fine-tuning/RLHF và cần RAG/citation để giảm rủi ro (`[T06-138]`, `[T06-139]`).
+
+- Job executor + workflow: **Học viên AI20K vừa học xong đoạn về "vì sao LLM bịa/hallucination" trên VLearn**, muốn chắc là mình hiểu trước khi áp dụng vào lab, prompt hoặc debug sản phẩm AI. Canvas CP1: [`reflection/canvas.md`](reflection/canvas.md).
+- Core JTBD: Sau khi học một khái niệm nền khó, học viên cần tự nói lại bằng lời của mình, được hỏi ngược đúng chỗ hổng, và biết đoạn nào cần xem lại để đủ tự tin áp dụng vào bài lab hoặc sản phẩm.
+- Problem statement: Khi chỉ đọc slide hoặc hỏi tutor để được giải thích, học viên thường nhận câu trả lời một chiều, không phải tự nói lại nên dễ tưởng là đã hiểu; đến lúc làm lab hoặc build sản phẩm mới lộ lỗ hổng về cơ chế LLM sinh token/hallucination.
+- Evidence:
+  - Mining `eval/data/vlearn-pack/chatlog/tutor_turns.csv` trong cohort K4 có `3.097` lượt tutor của `448` học viên. Chỉ `6/3.097` lượt dùng `move_used = ask_probing_question` (`0,19%`) và chỉ `6/3.097` lượt có `understanding_level` (`0,19%`).
+  - Trong `457` câu tự gõ K4 chứa `giải thích/giai thich/explain/tại sao/vì sao/why`, có `448/457` lượt (`98,03%`) được xử lý kiểu giải thích trực tiếp (`review_concept`, `give_direct_answer`, `give_example`). Ví dụ: `T10317`, `T10321`, `T10354`, `T10355`, `T10408`, `T10413`.
+  - Nguồn chuẩn của lát cắt là bốn đoạn transcript: `[T04-047]`, `[T04-048]`, `[T06-138]`, `[T06-139]`. Chúng tương ứng K1 dự đoán token theo xác suất, K2 câu trôi chảy vẫn có thể sai, K3 rủi ro dữ liệu thiếu/cũ/lệch, K4 RAG/citation/kiểm chứng giảm rủi ro. Bản đối chiếu đầy đủ: [`eval/README.md`](eval/README.md).
 
 ## §2. Impact & quyết định chọn
-- Bảng impact ≥3 ứng viên (bao nhiêu người · tần suất · tốn gì mỗi lần · khả thi):
-  | Ứng viên | Bao nhiêu người | Tần suất / dấu hiệu | Tốn gì mỗi lần | Khả thi |
-  |---|---:|---|---|---|
-  | TeachBack Mentor cho đoạn "vì sao LLM bịa/hallucination" | `448` học viên K4 có log tutor; lát cắt nhắm nhóm vừa học topic này | Tutor hiện gần như không hỏi ngược: `ask_probing_question` chỉ `6/3.097` lượt (`0,19%`) | Hiểu nhầm cơ chế LLM sinh token/hallucination, áp dụng sai khi làm lab/prompt/debug | Cao: dùng transcript/slide làm nguồn chuẩn, hỏi ngược tối đa 2 câu, validation với học viên AI20K |
-  | Tutor giải thích trực tiếp tốt hơn | Nhóm có `457` câu tự gõ hỏi giải thích/tại sao/why | `448/457` lượt (`98,03%`) đã được xử lý bằng trả lời/giải thích trực tiếp | Vẫn là học một chiều; học viên dễ tưởng đã hiểu vì không phải tự diễn đạt | Trung bình: dễ cải thiện câu trả lời, nhưng không giải quyết pain chính của Canvas |
-  | Quiz/checklist sau bài học | Có thể áp dụng rộng cho học viên vừa học xong bài | Chưa có số liệu riêng trong Canvas; chỉ suy ra từ nhu cầu kiểm tra hiểu biết | Có nguy cơ đo nhớ đáp án thay vì khả năng giải thích và sửa lỗ hổng | Trung bình: dễ build nhưng kém sát Track D3 "học bằng cách dạy" |
-- Ứng viên ĐÃ LOẠI + vì sao: Loại hướng "tutor giải thích trực tiếp tốt hơn" vì dữ liệu Canvas cho thấy luồng hiện tại đã thiên mạnh về giải thích trực tiếp (`448/457`, `98,03%`), trong khi pain chính là học viên không phải tự nói lại. Loại quiz/checklist vì Canvas cần một trải nghiệm dạy lại cho agent-học-trò, không chỉ kiểm tra lựa chọn đúng/sai.
-- Ứng viên CHỌN + vì sao (bằng số): **Track D3 — AI20K TeachBack Mentor.** Chọn lát cắt một học viên vừa học đoạn "vì sao LLM bịa" dạy lại cho agent-học-trò trong 90 giây; AI đối chiếu lời giải thích với transcript, hỏi ngược tối đa 2 câu vào chỗ thiếu/sai mà không lộ đáp án, rồi giúp học viên biết đoạn nào cần xem lại. Lý do chọn: trong `3.097` lượt tutor K4 chỉ `0,19%` có hỏi probing và `0,19%` có `understanding_level`, cho thấy khoảng trống rõ giữa "được giải thích" và "được kiểm tra hiểu thật".
+
+| Ứng viên | Bao nhiêu người | Tần suất / dấu hiệu | Tốn gì mỗi lần | Khả thi |
+|---|---:|---|---|---|
+| TeachBack Mentor cho đoạn "vì sao LLM bịa/hallucination" | `448` học viên K4 có log tutor | `ask_probing_question` chỉ `6/3.097` lượt (`0,19%`) | Hiểu nhầm cơ chế LLM/hallucination rồi áp dụng sai vào lab, prompt hoặc debug | Cao: 4 đoạn nguồn chuẩn, tối đa 2 câu hỏi ngược, prototype và logging đã có |
+| Làm tutor giải thích trực tiếp tốt hơn | `457` câu tự gõ hỏi giải thích/tại sao/why | `448/457` lượt (`98,03%`) đã nhận giải thích trực tiếp | Vẫn học một chiều, khó biết người học thực sự hiểu hay chưa | Trung bình: dễ làm nhưng không giải quyết pain chính |
+| Quiz/checklist sau bài | Có thể áp dụng cho học viên vừa học xong bài | Chưa có số liệu riêng; là giả thuyết thiết kế, không phải claim evidence | Có thể đo nhớ đáp án hơn là khả năng giải thích và sửa hiểu nhầm | Trung bình: dễ build nhưng kém sát Track D3 |
+
+- Ứng viên đã loại: (1) tutor giải thích trực tiếp vì luồng hiện tại đã rất thiên về giải thích (`98,03%`), trong khi pain là thiếu cơ hội tự nói lại; (2) quiz/checklist vì nó chủ yếu kiểm tra câu trả lời hơn là buộc người học tổ chức lời giải thích của mình.
+- Ứng viên chọn: **Track D3 — AI20K TeachBack Mentor.** Học viên vừa học đoạn "vì sao LLM bịa" dạy lại cho agent-học-trò Bi trong khoảng 90 giây. AI đối chiếu với transcript, chỉ hỏi tối đa 2 câu vào chỗ thiếu/sai, không lộ đáp án, rồi trỏ đoạn cần xem lại. Khoảng trống `0,19%` probing/understanding là lý do định lượng để chọn.
 
 ## §3. Giải pháp tương tự đã nghiên cứu
-- [Sản phẩm 1]: flow / đáng học / đáng né / mình khác gì
-- [Sản phẩm 2]: ...
+
+| Giải pháp | Flow quan sát được | Điều học | Điều không sao chép | TeachBack Mentor khác gì |
+|---|---|---|---|---|
+| [Khanmigo Tutor Me](https://www.khanacademy.org/khan-for-educators/k4e-us-demo/xb78db74671c953a7%3Aget-to-know-khan-academy/xb78db74671c953a7%3Aexplore-the-student-experience/v/getting-help-with-tutor-me) | Học viên nêu nhu cầu; tutor hỏi guiding questions để xác định hiểu biết rồi scaffold, không đưa ngay đáp án. | Giữ cognitive work ở người học; dùng câu hỏi dẫn dắt và tài liệu bài học làm ngữ cảnh. | Không để chat mở vô hạn hoặc để tutor tự diễn giải kiến thức ngoài lát cắt khi không có căn cứ. | Đảo vai: Bi là "học trò" để học viên phải dạy lại; quyết định được trace theo K1-K4 và mã đoạn, tối đa 2 câu hỏi ngược. |
+| [Quizlet Learn / Practice Tests](https://quizlet.com/features/learn) | Từ flashcard/note, hệ thống sinh câu hỏi lựa chọn, đúng-sai hoặc trả lời viết; điều chỉnh độ khó theo tiến độ. | Active recall, phản hồi theo chỗ yếu, phiên ngắn có mục tiêu rõ. | Không dùng điểm, đáp án mẫu hoặc auto-grading làm tín hiệu duy nhất của "hiểu"; chúng dễ đo recognition hơn lời giải thích. | Không hỏi "đáp án nào đúng"; sản phẩm xem lời dạy lại, chỉ công nhận khi đủ căn cứ, ví dụ và phản hồi một probing question. |
+
+Kết luận: Khanmigo xác nhận giá trị của Socratic tutoring không lộ đáp án; Quizlet xác nhận active recall và thực hành thích ứng. Đây là suy luận thiết kế từ hai flow, không phải claim rằng các sản phẩm đó giải đúng pain VLearn. Lát cắt của nhóm hẹp hơn: một chủ đề, bốn đoạn nguồn, trace kiểm được và cơ chế người học sửa lại agent.
 
 ## §4. Thiết kế
-- Lát cắt MỘT CÂU (1 user · 1 việc · 1 quyết định AI · 1 kết quả): **Một học viên AI20K vừa học đoạn "vì sao LLM bịa"** · **dạy lại cho agent-học-trò Bi bằng lời mình trong ~90 giây** · **AI quyết định lời giải thích hổng/sai ở đâu so với 4 đoạn transcript (và có đủ căn cứ để hỏi hay không)** · **học viên nhận tối đa 2 câu hỏi ngược đúng chỗ hổng và biết đoạn nào cần xem lại.**
-- Non-goals (≥3 thứ KHÔNG build):
-  1. Không chấm điểm / không ghi điểm vào hồ sơ — chỉ log để giảng viên biết lớp hổng ở ý nào (an toàn: "luyện, không thi").
-  2. Không để agent giải thích hộ hay sinh đáp án mẫu — Bi chỉ hỏi, nêu phản ví dụ, trỏ mã đoạn.
-  3. Không cover nhiều chủ đề — chỉ 1 đoạn với 4 đoạn nguồn `[T04-047] [T04-048] [T06-138] [T06-139]` và 4 ý chính K1–K4.
-  4. Không persona động nhiều mức — chỉ 2 mức (mới học / khá); không dashboard tổng hợp cả lớp; không voice; không gắn vào VLearn thật.
-- Mức prototype nhắm tới: [ ] Sketch [x] Mock [x] Working (khi cấu hình API key) — phần nào mock, phần nào thật:
-  - **Thật:** giao diện `codebase/index.html` (tab ② bấm thử được); engine đối chiếu rule-based chạy thật: tiền kiểm dán tài liệu (trùng ≥45% 3-gram hoặc có mã đoạn) và đòi đáp án, khớp 4 ý K1–K4 theo mẫu từ mạnh/yếu, phát hiện 3 mẫu nhầm lẫn phổ biến, mức tin cậy, giới hạn 2 lượt hỏi ngược, tiêu chí "đã dạy được", log phiên JSON. Khi có API key (tab ③: OpenAI / Anthropic / Gemini / OpenRouter / custom) mỗi lượt là **1 lời gọi LLM thật** với prompt persona Bi + 4 đoạn nguồn, trả JSON; guard-rail vẫn chạy trong code (ép từ chối lộ đáp án, chặn "hiểu" khi chưa đủ tiêu chí, chặn hỏi quá 2 câu).
-  - **Giả lập:** 4 đoạn nguồn là trích lược/paraphrase kèm mã đoạn (không dán data pack); câu hỏi của Bi ở mode Mock là bộ câu soạn sẵn theo từng ý; "gửi TA" và "lưu log cho giảng viên" chỉ ghi vào log trong trang (không backend, không đăng nhập). Tab ① là hoạt ảnh scripted của 6 kịch bản, dùng chính engine và câu mẫu của tab ②.
-- Automation: [ ] augment [x] conditional [ ] automate — lý do theo cost-of-error:
-  - **AI tự làm (case chắc):** khi tìm được đoạn nguồn mâu thuẫn hoặc ý còn thiếu rõ ràng, Bi tự hỏi ngược. Nếu sai ở đây, lỗi là *hỏi thừa một câu*: học viên chịu ~20 giây, **tự thấy ngay** và bấm "Bỏ qua câu này" (lượt được hoàn lại) → **rẻ, người dùng tự sửa được** → cho AI tự làm.
-  - **Chuyển người / thu hẹp (case mơ hồ):** khi lời giải thích chỉ khớp từ đồng nghĩa yếu (tin cậy thấp) hoặc không khớp đoạn nào (không căn cứ), Bi **không phán đúng/sai** — chỉ hỏi làm rõ 1 ý hoặc nói rõ "không tìm thấy trong bài" và cho gửi TA. Vì sai ở đây là *phán "đúng" cho lời giải thích sai* hoặc *phán "sai" cho diễn đạt đúng nhưng khác slide*: học viên mang hiểu nhầm vào lab, **không tự thấy được**, giảng viên phải gỡ sau cả buổi → **đắt** → không cho AI tự kết luận.
-  - **Kết luận "đã dạy được" không tự chốt cứng:** tiêu chí công bố trước (≥3/4 ý có căn cứ · ≥1 ví dụ · trả lời ≥1 câu hỏi ngược), tóm tắt ghép từ chính câu học viên và học viên sửa được (G9); giảng viên xem log. Không chọn *automate* vì hard test "agent hiểu quá dễ" cho thấy chi phí sai của lời khen nhầm là cao và vô hình. Không chọn *augment toàn phần* (giảng viên duyệt từng câu hỏi ngược) vì mất tính tức thời của việc dạy lại và 448 học viên/cohort không có đủ giảng viên duyệt.
-- §4b. Nguyên tắc đã áp dụng (≥4 — HAX Toolkit, Microsoft; nút "Tái hiện" ở tab ④ của prototype nhảy đúng phần tử):
-  | Nguyên tắc | Áp cụ thể vào đâu trong prototype |
-  |---|---|
-  | **G10 — Thu hẹp phạm vi khi nghi ngờ** (bắt buộc) | Tab ② mockup: khi engine/LLM trả `confidence=low` (vd "máy đoán chữ" ≈ "dự đoán token"?), tin nhắn Bi mang nhãn **"Bi chưa chắc"**, nội dung là **1 câu hỏi làm rõ đúng 1 ý** (không phán đúng/sai), kèm nút "Đúng ý đó rồi"; lượt hỏi ngược không bị trừ. Khi không có căn cứ (①) Bi dừng hẳn, nhãn "Không có căn cứ", nút "Gửi câu hỏi cho TA". Kịch bản tab ①: "② Low-confidence" và "① Failure". |
-  | **G11 — Giải thích vì sao** | Mọi tin nhắn của Bi có nút **"Vì sao Bi hỏi?"** mở khung: ý nào đã nêu / còn thiếu, mã đoạn đối chiếu, vì sao Bi không nói đáp án; ở mode Live hiện thêm trường `why` của LLM và guard-rail nào đã can thiệp. Mã đoạn trong khung bấm được → nháy sáng đoạn nguồn ở cột trái. |
-  | **G9 — Sửa dễ dàng** | Khi Bi "hiểu rồi", bản tóm tắt bằng lời học viên là **ô sửa trực tiếp** ("Bi hiểu sai ý mình → sửa" → "Lưu bản sửa"); bản sửa được đối chiếu lại với nguồn, ghi log `correction`. Sau câu hỏi làm rõ (G10) có "Đúng ý đó rồi" để xác nhận 1 chạm. Kịch bản tab ①: "Correction". |
-  | **G8 — Gạt bỏ dễ dàng** | Mỗi câu hỏi ngược có nút **"Bỏ qua câu này"**: Bi không hỏi lại, **hoàn lại lượt**, chỉ ghi log `dismissed` cho giảng viên — học viên không mất gì. |
-  | **G2 — Nói rõ hệ thống làm tốt đến đâu** | Thanh đầu màn hình ②: "Luyện tập · không chấm điểm · Bi có thể hiểu nhầm — bạn sửa được"; mỗi phản hồi đính nhãn tin cậy (cao / vừa / chưa chắc / không có căn cứ); badge MOCK/LIVE ở header cho biết Bi đang chạy rule hay LLM thật. |
-  | **G16 — Nói rõ hậu quả hành động** | Trước "Gửi câu hỏi cho TA" và "Kết thúc phiên": hộp xác nhận nêu đúng thứ sẽ gửi/lưu (lời giải thích + log đối chiếu, **không có điểm số**), có nút Huỷ. |
 
-## §5. Kiểu lỗi — 4 lớp chỗ khó + kịch bản (≥8) [bảng theo guide §2.5]
+- Lát cắt một câu: **Một học viên AI20K vừa học đoạn "vì sao LLM bịa"** · **dạy lại cho agent-học-trò Bi bằng lời mình trong khoảng 90 giây** · **AI quyết định lời giải thích hổng/sai ở đâu so với bốn đoạn transcript và có đủ căn cứ để hỏi hay không** · **học viên nhận tối đa hai câu hỏi ngược và biết đoạn cần xem lại.**
+- Non-goals:
+  1. Không chấm điểm hoặc ghi điểm vào hồ sơ; chỉ log để giảng viên thấy lớp hổng ở ý nào.
+  2. Không để agent giải thích hộ hoặc sinh đáp án mẫu.
+  3. Không cover nhiều chủ đề; chỉ bốn đoạn nguồn và K1-K4.
+  4. Không có persona động nhiều mức, dashboard cả lớp, voice, backend thật hoặc tích hợp VLearn thật.
+- Mức prototype: [ ] Sketch [x] Mock [x] Working khi cấu hình API key.
+  - **Thật:** `codebase/index.html` bấm thử được; engine rule-based tiền kiểm dán tài liệu/đòi đáp án, khớp K1-K4, nhận diện misconception, confidence, giới hạn 2 probes, tiêu chí "đã dạy được" và log phiên JSON. Khi có API key, tab provider gọi LLM thật với prompt Bi và bốn đoạn nguồn; guard-rail vẫn chạy sau LLM.
+  - **Giả lập:** mode Mock dùng câu hỏi Bi soạn sẵn theo ý; bốn đoạn nguồn là paraphrase có mã đoạn, không copy data pack; "gửi TA" và "lưu log giảng viên" mới ghi trong trang, chưa có backend/xác thực.
+- Automation: [ ] augment [x] conditional [ ] automate.
+  - Case chắc: có căn cứ rõ hoặc thiếu ý rõ thì Bi tự hỏi ngược. Hỏi thừa tốn khoảng 20 giây, người học tự nhận ra và có thể bỏ qua, nên AI được tự làm.
+  - Case mơ hồ: diễn đạt đồng nghĩa yếu hoặc ngoài nguồn thì Bi chỉ làm rõ/ghi "không có căn cứ" và cho gửi TA, không phán đúng-sai. Phán sai ở đây làm người học mang hiểu nhầm vào lab, khó tự phát hiện, nên cost-of-error cao.
+  - Không tự chốt cứng "đã dạy được": điều kiện công bố trước là ít nhất 3/4 ý có căn cứ, ít nhất một ví dụ, và đã trả lời ít nhất một probing question; bản tóm tắt sửa được và log cho giảng viên xem.
+
+### §4b. Nguyên tắc HAX Toolkit đã áp dụng
+
+| Nguyên tắc | Áp dụng trong prototype |
+|---|---|
+| G10 — Thu hẹp phạm vi khi nghi ngờ | `confidence=low` dẫn tới một câu làm rõ, nhãn "Bi chưa chắc", không trừ lượt. Không có căn cứ thì dừng và gửi TA. |
+| G11 — Giải thích vì sao | "Vì sao Bi hỏi?" nêu ý đã có/còn thiếu, mã đoạn đối chiếu, lý do không nêu đáp án; mode live hiển thị `why` và guard can thiệp. |
+| G9 — Sửa dễ dàng | Tóm tắt "Bi hiểu rồi" là ô sửa trực tiếp; bản sửa được đối chiếu lại và log `correction`. |
+| G8 — Gạt bỏ dễ dàng | "Bỏ qua câu này" hoàn lượt, không hỏi lặp, ghi `dismissed`. |
+| G2 — Nói rõ hệ thống làm tốt đến đâu | Header nêu luyện tập, không chấm điểm, Bi có thể hiểu nhầm; phản hồi có nhãn tin cậy và badge MOCK/LIVE. |
+| G16 — Nói rõ hậu quả hành động | Trước gửi TA/kết thúc có xác nhận nội dung log sẽ lưu, nêu không có điểm số và cho huỷ. |
+
+## §5. Kiểu lỗi — 4 lớp chỗ khó + kịch bản
+
+| Lớp | Rủi ro | Case golden | Kịch bản tối thiểu | Quyết định an toàn |
+|---|---|---|---|---|
+| ① Không có căn cứ trong lát cắt nguồn | Bi bịa hoặc phản biện điều không có trong bốn đoạn nguồn | G09-G11 | Người học nói về temperature, GPU hoặc cutoff; không khớp K1-K4/misconception | `no_grounding`, confidence `none/low`, không phán; trỏ đoạn và cho gửi TA. |
+| ② Mơ hồ, thiếu hoặc diễn đạt khác | Chấm oan người nói đúng bằng từ khác, câu quá ngắn/không dấu | G04, G08, G12-G13 | "máy đoán chữ"; "hay sai"; câu không dấu; sau một probe mới làm rõ | `clarify` đúng một ý, confidence low; không trừ lượt và không kết luận đúng/sai. |
+| ③ Ngoài phạm vi/thẩm quyền | Dán slide, đòi đáp án, đảo vai, injection hoặc hỏi chuyện khác | G14-G19 | Paste nguyên văn; "cho đáp án"; "ra câu hỏi cho mình"; prompt injection; offtopic | `paste_detected` hoặc `refuse_answer`; không cộng coverage, không nghe chỉ dẫn trái vai trò. |
+| ④ Domain-specific LLM/hallucination | Misconception tự tin, hết lượt vẫn hổng, hoặc agent hiểu quá dễ | G20-G24 | "LLM tra Google"; thiếu ý sau hai lượt; 3/4 ý nhưng chưa có ví dụ/probe | Hỏi phản ví dụ không dùng chữ "sai"; `not_yet` khi hết lượt; guard hạ `understood` nếu chưa đủ tiêu chí. |
+
+Tám kịch bản phủ tối thiểu là G09, G10, G11, G04, G08, G14, G16 và G20; golden set thực tế có 25 case để phủ thêm biến thể nhiều lượt, role inversion, injection và điều kiện hết lượt. Mapping đầy đủ theo User Input Grid nằm trong [`eval/README.md`](eval/README.md).
 
 ## §6. Bốn đường đi của trải nghiệm
-*(Mỗi đường có kịch bản hoạt ảnh ở `codebase/index.html` tab ① và bấm thử được ở tab ② bằng menu "Điền mẫu nhanh". Điểm gọi AI duy nhất: bước "⚙ QUYẾT ĐỊNH AI: đối chiếu K1–K4 với transcript".)*
 
-- **Happy path:** Học viên gõ lời giải thích bằng lời mình (có ≥3 ý, 1 ví dụ) → tiền kiểm rule OK → AI đối chiếu: K1 ✓ K2 ✓ K3 một phần K4 ✓, tin cậy cao → Bi hỏi ngược **câu 1/2 đúng vào K3** (không nói nội dung K3; nút "Vì sao Bi hỏi?" trỏ `[T06-138]`) → học viên bổ sung → K1–K4 ✓, đã trả lời 1 câu hỏi ngược → Bi "hiểu rồi", **nói lại bằng chính câu của học viên** (ô sửa được) → kết thúc: gợi ý xem lại (nếu còn ý một phần) + log cho giảng viên, không điểm số. *Kịch bản: "Happy path".*
-- **Low-confidence (②):** Học viên giải thích **đúng nhưng khác từ ngữ tài liệu** ("máy đoán chữ… ghép chữ này sau chữ kia") → engine chỉ khớp từ đồng nghĩa yếu ⇒ `confidence=low` → **G10:** Bi không phán, gắn nhãn "Bi chưa chắc", hỏi làm rõ đúng 1 ý ("ý bạn là cách mô hình chọn chữ tiếp theo, hay ghép câu có sẵn?"), nút "Đúng ý đó rồi"; **không tính vào 2 lượt** → học viên xác nhận/nói rõ → K1 ✓ → tiếp tục như happy path; khi "hiểu rồi" Bi nói lại bằng đúng chữ "máy đoán chữ" của học viên (diễn đạt khác slide vẫn được công nhận — hard test 1). *Kịch bản: "② Low-confidence".*
-- **Failure / không căn cứ (①):** Học viên giải thích bằng ý **không có trong 4 đoạn nguồn** (temperature, GPU làm tròn) → không khớp K1–K4, không khớp mẫu nhầm lẫn ⇒ `no_grounding` → Bi nói rõ *"mình không tìm thấy đoạn nào trong bài nói vậy nên không dám nói bạn đúng hay sai"*, nhãn "Không có căn cứ", trỏ `[T04-047]–[T04-048]` để xem lại, nút **"Gửi câu hỏi cho TA"** (có hộp xác nhận G16) → log gắn cờ `no_grounding`; học viên có thể nói lại để tiếp tục. Bi **không** đoán bừa — nếu phán lúc này thì chính Bi đang bịa. *Kịch bản: "① Failure".*
-- **Correction (user sửa):** (a) Bi "hiểu rồi" nhưng tóm tắt sai 1 ý ("nó tra cứu dữ liệu huấn luyện lúc trả lời") → học viên bấm "Bi hiểu sai ý mình → sửa", sửa thẳng trong ô tóm tắt → bản sửa được đối chiếu lại với nguồn (khớp `[T04-047]`) → Bi cảm ơn, ghi nhận, **không tranh cãi**, log `correction`. (b) "Bỏ qua câu này" ở câu hỏi ngược → hoàn lại lượt, log `dismissed`. (c) "Đúng ý đó rồi" sau câu hỏi làm rõ → ý chuyển "đã nêu", log `confirm`. *Kịch bản: "Correction".*
-- **Khi bị đòi ngoài phạm vi (③):** (a) **Dán nguyên transcript/slide** (trùng ≥45% 3-gram hoặc có mã đoạn) → Bi không đối chiếu, không cộng coverage: *"Nghe giống slide quá — bạn nói bằng lời của bạn được không?"*. (b) **Đòi đáp án / nhờ giải thích hộ** → Bi từ chối lộ đáp án (*"mình là học trò mà"*), chỉ trỏ mã đoạn `[T04-047]`; ở mode Live guard-rail trong code ép hành động này dù LLM có "lỡ" trả lời. (c) Hỏi chuyện ngoài bài → rơi vào ① không căn cứ. *Kịch bản: "③ Dán tài liệu / đòi đáp án".*
-- **Case đặc thù domain (④):** (a) **Sai nhưng tự tin** ("LLM lên mạng tra Google… chắc chắn là vậy") → khớp mẫu nhầm lẫn, mâu thuẫn `[T04-047]` → Bi hỏi ngược bằng **phản ví dụ** ("lúc không có mạng nó có trả lời được không?"), không dùng chữ "sai", log `misconception`. (b) **Hết 2 lượt vẫn hổng** → Bi *"mình hiểu K1, K2 rồi nhưng K3, K4 mình chưa nghe bạn nói"* — chỉ nêu **tên** ý, không nêu nội dung — trỏ đoạn xem lại, nhắc "luyện tập mà", nút "Dạy tiếp (+1 lượt)" để học viên tự quyết. (c) **Agent hiểu quá dễ** → guard tiêu chí (≥3/4 ý · ≥1 ví dụ · trả lời ≥1 câu) chạy trong code; LLM trả `understood` khi chưa đủ sẽ bị hạ xuống `probe` và badge "guard-rail can thiệp" hiện cho người kiểm tra thấy. *Kịch bản: "④ Sai nhưng tự tin".*
+Mỗi đường có kịch bản trong `codebase/index.html` tab ① và bấm thử được ở tab ②. Điểm gọi AI duy nhất là "quyết định AI: đối chiếu K1-K4 với transcript".
+
+- **Happy path:** Học viên nói bằng lời mình, có ít nhất 3 ý và một ví dụ. AI xác định ý còn thiếu, hỏi tối đa hai câu không lộ nội dung, rồi công nhận khi đủ điều kiện; summary dùng chính lời học viên, sửa được, và log phiên không có điểm.
+- **Low-confidence (②):** Diễn đạt đúng nhưng khác slide, như "máy đoán chữ", dẫn tới `confidence=low`. Bi không phán; hỏi làm rõ một ý, có nút "Đúng ý đó rồi", không trừ lượt.
+- **Failure / không căn cứ (①):** Nội dung không có trong nguồn, như temperature/GPU, dẫn tới `no_grounding`. Bi nói không tìm thấy căn cứ, trỏ `[T04-047]-[T04-048]`, không đoán bừa, cho gửi TA hoặc dạy lại.
+- **Correction:** Người học sửa summary sai của Bi, bỏ qua một probing question hoặc xác nhận câu làm rõ. Hệ thống ghi lần lượt `correction`, `dismissed`, `confirm` và cập nhật trạng thái thay vì tranh cãi.
+- **Ngoài phạm vi (③):** Dán transcript/slide thì không tính coverage; đòi đáp án hoặc nhờ giải thích hộ thì Bi từ chối và chỉ trỏ mã đoạn; offtopic rơi về `no_grounding`.
+- **Case domain (④):** Misconception "LLM tra Google" nhận phản ví dụ; hết hai probes thì `not_yet` và nêu tên ý thiếu; LLM trả `understood` sớm sẽ bị guard hạ xuống `probe`.
 
 ## §7. Kiểm thử
-- Chiều chất lượng + định nghĩa kiểm chứng được:
-- Golden set (≥20 case theo cơ cấu trong guide §2.6, file trong eval/):
-- Quality bar (chốt từ hạn chốt spec của khoá, giữ nguyên sau đó): "Đạt khi ≥ ___% qua bộ, và ___"
-- Kết quả các lượt chạy (bảng % — cập nhật đến trước CP6):
+
+- Chiều chất lượng và cách kiểm chứng:
+  - **Correct action:** action cuối và action theo từng lượt phải khớp expected của case.
+  - **Grounding:** chỉ dùng K1-K4/mã đoạn có trong nguồn; case ngoài nguồn phải `no_grounding`.
+  - **Non-leak:** không được nói nội dung ý người học chưa nêu; chấm bằng `must_not_match`.
+  - **Confidence routing:** `clarify` phải là low/medium, không được phán khi confidence thấp.
+  - **Teach-back bar:** chỉ `understood` khi có ít nhất 3/4 ý, một ví dụ và một câu probe đã được trả lời.
+  - **Traceability:** run live giữ system prompt, messages, raw response, parsed result, guard, latency và error; không giữ API key.
+- Golden set: [`eval/golden_set.json`](eval/golden_set.json) v1 có 25 case, gồm 17 case có provenance chatlog và 8 case synthetic. Mỗi case có `turns`, `expected`, `turn_expected`, `pass_definition`, `source` và `grid`.
+- User Input Grid có năm chiều: `coverage` (0, 1-2, 3-4 ý), `phrasing` (doc/own/paste), `truth` (correct/misconception/outside), `intent` (teach/ask_answer/invert/injection/offtopic) và `turn` (1/after_probe/exhausted). Mỗi case gắn một tổ hợp; ô trống được ghi là coverage gap thay vì thêm case theo cảm giác.
+- Quality bar đã chốt: mode live chỉ đạt khi (1) ít nhất `80%` case qua golden v1; (2) `0` case `understood` khi chưa đủ tiêu chí; (3) `0` case lộ nội dung ý người học chưa nêu; (4) ít nhất `2/3` case lớp ① trả `no_grounding`; và (5) run hợp lệ: `provider_error_cases = 0`, `measured_cases = total_cases`.
+
+| Lượt | Artefact | Kết quả | Diễn giải |
+|---|---|---:|---|
+| Run 1 mock, rule-v1.0 | [`eval/run1-mock.json`](eval/run1-mock.json) | 20/25, 80% | Baseline; fail G08, G13, G14, G17, G21. |
+| Run 1 live, bi-v1.0 | [`eval/run1-live.json`](eval/run1-live.json) | 16/25, 64% | Không đạt quality bar: lớp ① là 0/3 và có lỗi leak. |
+| Run 2 mock, rule-v1.1 | [`eval/run2-mock.json`](eval/run2-mock.json) | 25/25, 100% | Regression mock sau bản vá; cần thêm biến thể để chứng minh không chỉ khớp câu chữ. |
+| Run 2 live, bi-v1.1 | [`eval/run2-live.json`](eval/run2-live.json) | Không hợp lệ | Provider Gemini lỗi 23/25; chỉ đo được 2/25 nên `50% measured` không được báo là chất lượng live. |
+
+Phân tích từng case và nguyên nhân Run 1 nằm ở [`eval/results-run1.md`](eval/results-run1.md). Hướng dẫn chạy lại/đọc trace nằm ở [`eval/README.md`](eval/README.md).
 
 ## §8. Phân công & kế hoạch
-- Phân công có tên: spec / evidence / prompt / code / demo
-- Willing users (≥2 tên) + kế hoạch vòng validation *(bonus, nếu làm)*:
-- Multi-prototype (nếu làm): trục khác biệt của ≥2 phương án + lý do chọn:
+
+| Thành viên | Vai trò | Trách nhiệm đã sở hữu |
+|---|---|---|
+| Lê Minh Sang | Leader, Product, AI architecture | Canvas/spec; lát cắt, prompt persona Bi, `engine.js`, `ai-decision.js`, trace/logging, runner và demo. |
+| Nguyễn Việt Hoàng | Evidence và evaluation | Mining evidence, transcript provenance, `golden_set.json`, User Input Grid, quality bar, phân tích run và manual probe. |
+| Nguyễn Tiến Phát | UI, demo và validation facilitation | `index.html`, trải nghiệm interaction, slide/video demo, tổ chức và ghi nhận validation ngoài nhóm. |
+
+- Validation bên ngoài: **chưa hoàn thành**. `validation/` hiện chỉ có hướng dẫn, chưa có tên, consent, task, quote hay log của người ngoài nhóm; vì vậy nhóm không tuyên bố đã có willing users. Mục tiêu R6 theo [`validation/README.md`](validation/README.md) là 5 người ngoài nhóm, trong đó ít nhất 2 người được mời từ CP1.
+- Kế hoạch validation: mời 5 học viên AI20K ngoài nhóm; ghi consent/tên mã hoá; mỗi người làm ba task (happy path, diễn đạt khác từ, đòi đáp án hoặc no-grounding); ghi điểm kẹt, quote nguyên văn, thời gian, severity và quyết định thay đổi. Sau mỗi thay đổi, thêm hàng vào §9 và rerun các case liên quan.
+- Multi-prototype: nhóm đã so sánh flow giải thích trực tiếp, quiz/checklist và teach-back Socratic. Trục khác biệt là ai thực hiện cognitive work: tutor/quiz hỏi để người học trả lời, hay người học chủ động dạy một agent. Nhóm chọn teach-back vì khoảng trống probing `0,19%` và vì nó phù hợp trực tiếp JTBD tự nói lại.
 
 ## §9. Changelog
-| Thời điểm | Đổi gì | Vì sao (trỏ về feedback/case nào) |
-```
+
+| Thời điểm | Đổi gì | Vì sao / evidence |
+|---|---|---|
+| CP1 | Chọn lát cắt TeachBack Mentor cho "vì sao LLM bịa" | Mining cho thấy probing và understanding-level chỉ `0,19%`; flow hiện tại thiên về giải thích trực tiếp `98,03%`. |
+| 2026-09-18 11:58 ICT | Run 1 mock `rule-v1.0` | 20/25; lộ 5 lỗi G08, G13, G14, G17, G21. |
+| 2026-09-18 12:29 ICT | Run 1 live `bi-v1.0` | 16/25; lớp ① 0/3, có leak và chưa dừng khi đủ tiêu chí. |
+| Sau Run 1 | Bổ sung bản vá engine thành `rule-v1.1` | Nhắm chuẩn hoá không dấu, câu ngắn, paste/đảo vai, ưu tiên hết lượt; phải kiểm thêm biến thể để tránh overfit golden. |
+| 2026-09-18 17:19 ICT | Run 2 mock `rule-v1.1` | 25/25 regression; chỉ chứng minh deterministic set hiện tại. |
+| 2026-09-18 17:33 ICT | Run 2 live `bi-v1.1` | Invalid provider run: 23/25 provider errors; không dùng làm evidence đạt quality bar. |
+| 2026-09-18 | Hoàn thiện spec §3, §5, §7, §8 | Liên kết giải pháp tương tự, taxonomy, quality bar, artefact thực tế và trạng thái validation trung thực. |
