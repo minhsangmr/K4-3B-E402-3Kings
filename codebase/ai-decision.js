@@ -88,6 +88,9 @@
 
   async function request(options) {
     const config = options.config;
+    const timeoutMs = Number.isFinite(Number(config.timeoutMs)) && Number(config.timeoutMs) > 0 ? Number(config.timeoutMs) : 20000;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
     const traceId = id();
     const endpoint = endpointFor(config);
     const body = requestBody(config, options.messages);
@@ -112,6 +115,7 @@
         method: 'POST',
         headers: requestHeaders(config),
         body: JSON.stringify(body),
+        signal: controller.signal,
       });
       const raw = await response.text();
       entry.response_status = response.status;
@@ -124,10 +128,13 @@
       publish(entry);
       return { text, raw, trace_id: traceId, elapsed_ms: entry.elapsed_ms };
     } catch (error) {
+      if (controller.signal.aborted) error = new Error(`LLM timeout sau ${timeoutMs} ms`);
       entry.elapsed_ms = entry.elapsed_ms ?? Math.round(performance.now() - started);
       entry.error = String(error?.message || error);
       publish(entry);
       throw error;
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 

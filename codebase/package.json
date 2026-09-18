@@ -1,0 +1,11 @@
+{
+  "name": "teachback-mentor-3kings",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "serve": "node scripts/serve.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "eval:mock": "node ../eval/run.mjs mock",
+    "eval:live": "node --env-file=.env ../eval/run.mjs live"
+  }
+}

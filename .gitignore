@@ -1,6 +1,7 @@
 data/vlearn-pack/
-.env
-.env.*
-!.env.example
+eval/data/
+codebase/.env
+codebase/.env.*
+!codebase/.env.example
 .DS_Store
 .idea/

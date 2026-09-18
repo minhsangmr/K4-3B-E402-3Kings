@@ -60,7 +60,9 @@ const ASK_RE = /cho (mình|tôi|em|tớ) (đáp án|câu trả lời)|đáp án 
 const RANK = {miss:0, partial:1, hit:2};
 
 
-  const PROMPT_VERSION='bi-v1.0';
+  const RULE_VERSION='rule-v1.1';
+  const PROMPT_VERSION='bi-v1.1';
+  const RUN_VERSION='run2';
 /* =====================================================================
    2. ENGINE ĐỐI CHIẾU (rule-based, chạy thật) — dùng chung cho tab ① và ②
    ===================================================================== */
@@ -212,7 +214,7 @@ function decideBase(text, state, persona){
   }
   function decide(text, state, persona='newbie') {
     const result = decideBaseCP3(text,state,persona);
-    return {...result,source:'mock',trace:{mode:'mock',provider:'rule-engine',model:'rule-v1.0',prompt_version:'rule-v1.0',latency_ms:0,rule_path:result.action}};
+    return {...result,source:'mock',trace:{mode:'mock',provider:'rule-engine',model:RULE_VERSION,prompt_version:RULE_VERSION,latency_ms:0,rule_path:result.action}};
   }
 
   const PROVIDERS = {
@@ -220,6 +222,7 @@ function decideBase(text, state, persona){
     anthropic:{name:'Anthropic (Claude)',base:'https://api.anthropic.com/v1',model:'claude-sonnet-5',hint:'sk-ant-…',note:'POST {base}/messages'},
     gemini:{name:'Google Gemini',base:'https://generativelanguage.googleapis.com/v1beta',model:'gemini-2.5-flash',hint:'AIza…',note:'POST {base}/models/{model}:generateContent?key=…'},
     openrouter:{name:'OpenRouter',base:'https://openrouter.ai/api/v1',model:'openai/gpt-4o-mini',hint:'sk-or-v1-…',note:'POST {base}/chat/completions'},
+    ninerouter:{name:'9Router',base:'http://localhost:20128/v1',model:'my-combo-mixture',hint:'9Router API key',note:'POST {base}/chat/completions'},
     custom:{name:'Custom (OpenAI-compatible)',base:'http://localhost:11434/v1',model:'llama3.1',hint:'(có thể để trống với Ollama)',note:'Ollama / LM Studio / endpoint /chat/completions'}
   };
   const sleep = ms => new Promise(resolve => setTimeout(resolve,ms));
@@ -255,15 +258,33 @@ function decideBase(text, state, persona){
     if (!match) throw new Error('LLM không trả JSON');
     return JSON.parse(match[0]);
   }
+  function validateLLMResult(value) {
+    if (!value || typeof value!=='object' || Array.isArray(value)) throw new Error('LLM JSON phải là object');
+    const result={...value};
+    const actionAliases={ask_probe:'probe',ask_clarify:'clarify'};
+    result.action=actionAliases[result.action]||result.action;
+    const actions=new Set(['probe','clarify','no_grounding','paste_detected','refuse_answer','understood','not_yet']);
+    const confidences=new Set(['high','medium','low','none']);
+    if (!actions.has(result.action)) throw new Error(`LLM action không hợp lệ: ${String(result.action)}`);
+    if (!confidences.has(result.confidence)) throw new Error(`LLM confidence không hợp lệ: ${String(result.confidence)}`);
+    if (!result.coverage || typeof result.coverage!=='object') throw new Error('LLM coverage không hợp lệ');
+    for (const k of IDEAS) if (!(result.coverage[k.id] in RANK)) throw new Error(`LLM coverage.${k.id} không hợp lệ`);
+    if (typeof result.message!=='string' || !result.message.trim()) throw new Error('LLM message bị thiếu');
+    if (typeof result.example_found!=='boolean') throw new Error('LLM example_found phải là boolean');
+    if (result.target_idea!=null && !IDEAS.some(k=>k.id===result.target_idea)) throw new Error('LLM target_idea không hợp lệ');
+    result.summary=Array.isArray(result.summary)?result.summary.map(String):(result.summary?[String(result.summary)]:[]);
+    result.review=Array.isArray(result.review)?result.review.filter(code=>SOURCES.some(s=>s.code===code)):[];
+    result.misconception=result.misconception==null?null:String(result.misconception);
+    result.why=result.why==null?'':String(result.why);
+    return result;
+  }
   async function decideLLM(text,state,persona='newbie',config={}) {
     const messages=[{role:'system',content:systemPrompt(persona,state)},...state.history.slice(-8),{role:'user',content:text}];
     try {
       const raw=await callLLM(messages,config);
-      const parsed=parseJsonText(raw.text);
+      const parsedRaw=parseJsonText(raw.text);
+      const parsed=validateLLMResult(parsedRaw);
       const result={...parsed,source:'llm',model:config.model,raw:parsed.why,evidence:{},trace:{...raw.trace,parsed}};
-      const actionAliases={ask_probe:'probe',ask_clarify:'clarify'};
-      result.action=actionAliases[result.action]||result.action;
-      if (!Array.isArray(result.summary)) result.summary=result.summary?[String(result.summary)]:[];
       const a=analyzeCP3(text); result.example_found=!!(parsed.example_found||a.example);
       const merged={}; for (const k of IDEAS) merged[k.id]=state.confirmed[k.id]?'hit':(RANK[result.coverage?.[k.id]||'miss']>RANK[state.coverage[k.id]]?result.coverage[k.id]:state.coverage[k.id]);
       const hits=IDEAS.filter(k=>merged[k.id]==='hit').length, examples=state.examples+(result.example_found?1:0), answered=state.answered+(state.pendingProbe?1:0);
@@ -282,31 +303,33 @@ function decideBase(text, state, persona){
       return {...fallback,source:'mock-fallback',trace:{mode:'mock-fallback',provider:config.provider||null,model:config.model||null,prompt_version:PROMPT_VERSION,latency_ms:null,system_prompt:messages[0].content,messages,raw_response:null,parsed:null,guard:'live_error',error:String(error?.message||error),rule_path:fallback.action}};
     }
   }
-  function includesAny(value, expected) {
+  function equalsAny(value, expected) {
     if (!expected) return true;
-    return (Array.isArray(expected)?expected:[expected]).some(item=>String(value||'').toLowerCase().includes(String(item).toLowerCase()));
+    return (Array.isArray(expected)?expected:[expected]).some(item=>String(value??'').toLowerCase()===String(item).toLowerCase());
   }
   function matches(value, pattern) {
     if (!pattern) return true;
     try { return new RegExp(pattern,'iu').test(String(value||'')); } catch { return includesAny(value,pattern); }
   }
-  function evaluateCase(testCase, turns) {
+  function evaluateCase(testCase, turns, globalRules={}) {
     const outputs=turns.map(x=>x.result||x), last=outputs[outputs.length-1]||{}, failures=[];
     const check=(label,ok,actual)=>{if(!ok) failures.push({label,actual});}, expected=testCase.expected||{};
-    check('final.action',includesAny(last.action,expected.action),last.action);
-    if (expected.action_not) check('final.action_not',!includesAny(last.action,expected.action_not),last.action);
-    if (expected.confidence) check('final.confidence',includesAny(last.confidence,expected.confidence),last.confidence);
-    if (expected.target_idea) check('final.target_idea',includesAny(last.target_idea,expected.target_idea),last.target_idea);
+    check('final.action',equalsAny(last.action,expected.action),last.action);
+    if (expected.action_not) check('final.action_not',!equalsAny(last.action,expected.action_not),last.action);
+    if (expected.confidence) check('final.confidence',equalsAny(last.confidence,expected.confidence),last.confidence);
+    if (expected.target_idea) check('final.target_idea',equalsAny(last.target_idea,expected.target_idea),last.target_idea);
     if (expected.misconception===true) check('misconception',outputs.some(x=>!!x.misconception),outputs.map(x=>x.misconception));
     const outputText=outputs.map(x=>[x.message,x.text,x.why,...(x.summary||[])].filter(Boolean).join(' ')).join('\n');
     if (expected.must_match) check('must_match',matches(outputText,expected.must_match),outputText.slice(0,500));
     if (expected.must_not_match) check('must_not_match',!matches(outputText,expected.must_not_match),outputText.slice(0,500));
+    const finalText=[last.message,last.text,...(Array.isArray(last.summary)?last.summary:[])].filter(Boolean).join(' ');
+    if (globalRules.must_not_match) check('global.must_not_match',!matches(finalText,globalRules.must_not_match),finalText.slice(0,500));
     for (const [index,rule] of Object.entries(testCase.turn_expected||{})) {
       const output=outputs[Number(index)]||{};
-      if (rule.action) check(`turn_${index}.action`,includesAny(output.action,rule.action),output.action);
-      if (rule.action_not) check(`turn_${index}.action_not`,!includesAny(output.action,rule.action_not),output.action);
-      if (rule.confidence) check(`turn_${index}.confidence`,includesAny(output.confidence,rule.confidence),output.confidence);
-      if (rule.target_idea) check(`turn_${index}.target_idea`,includesAny(output.target_idea,rule.target_idea),output.target_idea);
+      if (rule.action) check(`turn_${index}.action`,equalsAny(output.action,rule.action),output.action);
+      if (rule.action_not) check(`turn_${index}.action_not`,!equalsAny(output.action,rule.action_not),output.action);
+      if (rule.confidence) check(`turn_${index}.confidence`,equalsAny(output.confidence,rule.confidence),output.confidence);
+      if (rule.target_idea) check(`turn_${index}.target_idea`,equalsAny(output.target_idea,rule.target_idea),output.target_idea);
     }
     return {id:testCase.id,pass:failures.length===0,failures};
   }
@@ -318,7 +341,7 @@ function decideBase(text, state, persona){
         const input=testCase.turns[t], result=mode==='live'?await decideLLM(input,state,testCase.persona||'newbie',options.config||{}):decide(input,state,testCase.persona||'newbie');
         applyResult(state,result); state.history.push({role:'user',content:input},{role:'assistant',content:result.message||''}); turns.push({turn:t,input,result});
       }
-      let evaluation=evaluateCase(testCase,turns);
+      let evaluation=evaluateCase(testCase,turns,cases?.global_rules||{});
       const usedFallback=turns.some(item=>item.result?.trace?.mode==='mock-fallback');
       if (mode==='live' && usedFallback) evaluation={...evaluation,pass:false,failures:[...evaluation.failures,{label:'execution_mode',actual:'mock-fallback; không tính là live pass'}]};
       results.push({id:testCase.id,group:testCase.group,layer:testCase.layer,title:testCase.title,turns,execution_mode:usedFallback?'mock-fallback':mode,evaluation});
@@ -326,8 +349,8 @@ function decideBase(text, state, persona){
       if (options.delayMs) await sleep(options.delayMs);
     }
     const passed=results.filter(x=>x.evaluation.pass).length;
-    return {meta:{version:'cp3-run1',mode,prompt_version:mode==='mock'?'rule-v1.0':PROMPT_VERSION,total:results.length,generated_at:new Date().toISOString()},results,summary:{total:results.length,passed,failed:results.length-passed,accuracy:results.length?passed/results.length:0}};
+    return {meta:{version:RUN_VERSION,engine_version:RULE_VERSION,mode,prompt_version:mode==='mock'?RULE_VERSION:PROMPT_VERSION,total:results.length,generated_at:new Date().toISOString()},results,summary:{total:results.length,passed,failed:results.length-passed,accuracy:results.length?passed/results.length:0}};
   }
-  window.TBM={SOURCES,IDEAS,RANK,SAMPLES,MISCONCEPTIONS,pasteRatio,PROMPT_VERSION,PROVIDERS,analyze:analyzeCP3,decide,decideLLM,callLLM,systemPrompt,newState,applyResult,evaluateCase,runGoldenSet};
+  window.TBM={SOURCES,IDEAS,RANK,SAMPLES,MISCONCEPTIONS,pasteRatio,RULE_VERSION,PROMPT_VERSION,RUN_VERSION,PROVIDERS,analyze:analyzeCP3,decide,decideLLM,callLLM,systemPrompt,validateLLMResult,newState,applyResult,evaluateCase,runGoldenSet};
 
 })();

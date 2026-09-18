@@ -1,10 +1,10 @@
-# Mini Hackathon AI — Batch 04 · Lớp 3A
+# Mini Hackathon AI — Batch 04 · Lớp 3B
 
 **SPEC → Prototype → Demo.** Đây không phải cuộc thi code — đây là cuộc thi **tư duy sản phẩm AI**.
 
 ## 👥 Thành viên nhóm & Phân công vai trò
 
-**Lớp:** 3B · **Phòng:** E402 · **Cụm:** ____ · **Track:** D3 — TeachBack Mentor (học bằng cách dạy)
+**Lớp:** 3B · **Phòng:** E402 · **Cụm:** chưa ghi trong repo · **Track:** D3 — TeachBack Mentor (học bằng cách dạy)
 
 | Họ và Tên | Mã Học Viên | Vai trò chính | Phần việc đảm nhiệm trong dự án |
 |---|---|---|---|
@@ -12,6 +12,20 @@
 |Nguyễn Việt Hoàng|2A202602424|Evidence · Golden set · Quality bar|Mining `tutor_turns.csv` (3.097 lượt K4, 0,19% probing); golden set 25 case (17 từ chatlog) + User Input Grid (`eval/golden_set.json`, `eval/README.md`); manual probe; phân tích lỗi lượt 1|
 |Nguyễn Tiến Phát|2A202602387|Prototype UI · Demo · Repo|Prototype CP2 (`index.html`); UI màn "Dạy lại cho Bi" (badge LIVE/model, đếm thời gian gọi LLM, trace drawer, toast fallback); video CP3; README/demo; quản lý repo & PR|
 |  |  |  |  |
+
+## Cấu trúc repo 3Kings
+
+Repo này dùng cấu trúc nộp bài 3Kings làm chuẩn top-level; cấu trúc production từ AI20K agent template được lồng vào bên trong `codebase/`.
+
+| Đường dẫn | Vai trò |
+|---|---|
+| `README.md` | Copy của BTC, bảng thành viên ở đầu |
+| `spec.md` | AI Spec và quality bar |
+| `demo-slides.pdf` | Slide PDF 6 trang |
+| `codebase/` | Prototype và khung production (`src/`, `tests/`, `docs/`, `scripts/`) |
+| `eval/` | Golden set, kết quả các lượt chạy, data pack local bị ignore |
+| `validation/` | Nhật ký người ngoài dùng thử cho R6 |
+| `reflection/` | Reflection/đóng góp theo từng thành viên và tài liệu CP1 |
 
 > Nhóm copy nguyên file README này về repo của mình, rồi điền bảng trên. Cột **Phần việc đảm nhiệm** ghi càng cụ thể càng tốt.
 

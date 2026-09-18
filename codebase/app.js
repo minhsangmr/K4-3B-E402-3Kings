@@ -224,11 +224,11 @@ resetFlow();
    ===================================================================== */
 let S_ = null;
 function newSession(){
-  S_ = window.TBM.newState();
+  S_ = window.TBMSessionState.replace(S_, () => window.TBM.newState(), clearInterval);
   $('#mk-chat').innerHTML=''; $('#mk-log').innerHTML=''; $('#mk-review').innerHTML='<li style="color:var(--muted)">Chưa có — Bi sẽ trỏ đoạn khi phát hiện chỗ hổng.</li>';
   $('#mk-summary').innerHTML='<span style="color:var(--muted)">Phiên đang diễn ra. Bấm "Kết thúc phiên" để xem tóm tắt (không có điểm số).</span>';
   $('#mk-confirm').innerHTML=''; $('#mk-input').value=''; $('#mk-input').disabled=false; $('#btnSend').disabled=false;
-  clearInterval(S_.timerId); $('#timer').textContent='⏱ 90s gợi ý'; $('#timer').className='timer';
+  $('#timer').textContent='⏱ 90s gợi ý'; $('#timer').className='timer';
   renderCoverage(); renderProbes();
   const p=$('#persona').value;
   addBi({text: p==='mid' ? 'Chào bạn, mình là Bi. Mình đọc slide "vì sao LLM bịa" rồi nhưng thấy nó hơi rời rạc — bạn dạy lại giúp mình nối các ý với nhau nhé? Mình sẽ hỏi lại ở chỗ mình chưa thông. Đây là luyện tập, không có điểm; nếu mình hiểu nhầm bạn cứ sửa.' : 'Chào bạn! Mình là Bi, mới học tới đoạn "vì sao LLM bịa" mà chưa hiểu lắm. Bạn dạy lại cho mình nhé? Mình có thể hiểu nhầm nên bạn cứ sửa mình thoải mái — đây là luyện tập, không có điểm đâu.', badge:null});
@@ -325,21 +325,31 @@ $('#btnTA').onclick=askTA;
 $('#btnCopyLog').onclick=()=>{ const j=JSON.stringify({session:new Date().toISOString(),persona:$('#persona').value,mode:isLive()?'live':'mock',coverage:S_.coverage,confirmed:S_.confirmed,examples:S_.examples,probes:S_.probes,answered:S_.answered,dismissed:S_.dismissed,corrections:S_.corrections,review:[...S_.review],history:S_.history,log:S_.log},null,2); navigator.clipboard?.writeText(j); $('#btnCopyLog').textContent='Đã sao chép ✓'; setTimeout(()=>$('#btnCopyLog').textContent='Sao chép JSON',1500); };
 
 async function sendText(text, opt={}){
-  if(S_.ended) return; S_.turn++; addHv(text); S_.history.push({role:'user',content:text}); $('#btnSend').disabled=true; typingOn(isLive()?`Đang gọi ${cfg().provider} / ${cfg().model}…`:'Bi đang nghĩ…');
+  if(S_.ended) return; S_.turn++; addHv(text); $('#btnSend').disabled=true; typingOn(isLive()?`Đang gọi ${cfg().provider} / ${cfg().model}…`:'Bi đang nghĩ…');
   const persona=$('#persona').value;
-  let r;
-  if(isLive()) r = await window.TBM.decideLLM(text,S_,persona,cfg());
-  else { await sleep(250); r = decide(text,S_,persona); }
-  typingOff();
-  if(r.trace?.error) toast('LLM lỗi → dùng engine mock: '+String(r.trace.error).slice(0,120));
-  // One state mutation path is shared by the UI and Eval.
-  window.TBM.applyResult(S_,r);
-  renderCoverage(); renderProbes(); addReview(r.review);
-  logAdd(r.action, `conf=${r.confidence} · cov=${IDEAS.map(k=>k.id[1]+':'+(S_.confirmed[k.id]?'hit':S_.coverage[k.id])[0]).join(' ')} · ex=${S_.examples} · probes=${S_.probes}/${S_.probeLimit}${r.source==='llm'?' · llm':''}${r.guard?' · GUARD':''}`);
-  const summaryText=Array.isArray(r.summary)?r.summary.join('\n'):(r.summary?String(r.summary):'');
-  S_.history.push({role:'assistant',content:(r.message||'')+(summaryText?'\n'+summaryText:'')});
-  addBi(r); $('#btnSend').disabled=false; $('#mk-input').focus();
-  return r;
+  try {
+    let r;
+    if(isLive()) r = await window.TBM.decideLLM(text,S_,persona,cfg());
+    else { await sleep(250); r = decide(text,S_,persona); }
+    typingOff();
+    if(r.trace?.error) toast('LLM lỗi → dùng engine mock: '+String(r.trace.error).slice(0,120));
+    // The current input is appended only after decideLLM so it appears once in the request.
+    window.TBM.applyResult(S_,r);
+    renderCoverage(); renderProbes(); addReview(r.review);
+    logAdd(r.action, `conf=${r.confidence} · cov=${IDEAS.map(k=>k.id[1]+':'+(S_.confirmed[k.id]?'hit':S_.coverage[k.id])[0]).join(' ')} · ex=${S_.examples} · probes=${S_.probes}/${S_.probeLimit}${r.source==='llm'?' · llm':''}${r.guard?' · GUARD':''}`);
+    const summaryText=Array.isArray(r.summary)?r.summary.join('\n'):(r.summary?String(r.summary):'');
+    S_.history.push({role:'user',content:text},{role:'assistant',content:(r.message||'')+(summaryText?'\n'+summaryText:'')});
+    addBi(r);
+    return r;
+  } catch(error) {
+    const message='Bi gặp lỗi khi hiển thị phản hồi. Bạn có thể thử gửi lại hoặc bắt đầu phiên mới.';
+    toast(message+' '+String(error?.message||error).slice(0,100));
+    addBi({message,confidence:'none',source:'mock-fallback'});
+    return null;
+  } finally {
+    typingOff();
+    if(!S_.ended) { $('#btnSend').disabled=false; $('#mk-input').focus(); }
+  }
 }
 function endSession(){ if(S_.ended) return; S_.ended=true; clearInterval(S_.timerId); $('#mk-input').disabled=true; $('#btnSend').disabled=true;
   const hits=IDEAS.filter(k=>S_.confirmed[k.id]||S_.coverage[k.id]==='hit'); const ok=hits.length>=3&&S_.examples>=1&&S_.answered>=1; const missing=IDEAS.filter(k=>!hits.includes(k));
@@ -356,16 +366,18 @@ renderSources();
    5. TAB ③ — LLM PROVIDERS
    ===================================================================== */
 const PROVIDERS = window.TBM.PROVIDERS;
-function cfg(){ try{ return JSON.parse(localStorage.getItem('tbm_llm_cfg')||'null')||{provider:'openai',base:PROVIDERS.openai.base,model:PROVIDERS.openai.model,key:'',temp:0.3,live:false}; }catch{ return {provider:'openai',base:PROVIDERS.openai.base,model:PROVIDERS.openai.model,key:'',temp:0.3,live:false}; } }
+const CFG_KEY='tbm_llm_cfg';
+const defaultCfg=()=>({provider:'openai',base:PROVIDERS.openai.base,model:PROVIDERS.openai.model,key:'',temp:0.3,timeoutMs:20000,live:false});
+function cfg(){ try{ const saved=sessionStorage.getItem(CFG_KEY); if(saved) return JSON.parse(saved); const legacy=localStorage.getItem(CFG_KEY); if(legacy){ sessionStorage.setItem(CFG_KEY,legacy); localStorage.removeItem(CFG_KEY); return JSON.parse(legacy); } return defaultCfg(); }catch{ return defaultCfg(); } }
 function isLive(){ const c=cfg(); return !!(c.live && (c.key || c.provider==='custom')); }
-function saveCfg(c){ localStorage.setItem('tbm_llm_cfg', JSON.stringify(c)); renderMode(); }
+function saveCfg(c){ sessionStorage.setItem(CFG_KEY, JSON.stringify(c)); localStorage.removeItem(CFG_KEY); renderMode(); }
 function renderMode(){ const b=$('#modeBadge'); if(isLive()){ b.textContent='LIVE · '+cfg().provider+' / '+cfg().model; b.classList.add('live'); } else { b.textContent='MOCK · engine rule-based'; b.classList.remove('live'); } }
 function renderProviders(){ const c=cfg(); $('#providers').innerHTML=Object.entries(PROVIDERS).map(([id,p])=>`<div class="prov ${c.provider===id?'on':''}" data-p="${id}"><b>${p.name}</b><small>${p.base}</small></div>`).join('');
-  $$('#providers .prov').forEach(el=>el.onclick=()=>{ const p=PROVIDERS[el.dataset.p]; $('#cfgBase').value=p.base; $('#cfgModel').value=p.model; $('#cfgKey').placeholder=p.hint; $('#cfgBaseHint').textContent=p.note.replace('{base}',p.base); $$('#providers .prov').forEach(x=>x.classList.toggle('on',x===el)); });
-  $('#cfgBase').value=c.base; $('#cfgModel').value=c.model; $('#cfgKey').value=c.key||''; $('#cfgTemp').value=c.temp??0.3; $('#cfgBaseHint').textContent=PROVIDERS[c.provider].note.replace('{base}',c.base); $('#cfgKey').placeholder=PROVIDERS[c.provider].hint; $('#cfgKeyHint').textContent='Chỉ lưu trong localStorage của trình duyệt này. Đừng commit key. Với Anthropic, key phải là loại cho phép gọi từ browser.'; }
-function readCfgForm(){ const provider=$('#providers .prov.on')?.dataset.p||'openai'; return {provider, base:$('#cfgBase').value.trim().replace(/\/$/,''), model:$('#cfgModel').value.trim(), key:$('#cfgKey').value.trim(), temp:parseFloat($('#cfgTemp').value)||0.3}; }
+  $$('#providers .prov').forEach(el=>el.onclick=()=>{ const current=$('#providers .prov.on')?.dataset.p; const p=PROVIDERS[el.dataset.p]; if(current!==el.dataset.p) $('#cfgKey').value=''; $('#cfgBase').value=p.base; $('#cfgModel').value=p.model; $('#cfgKey').placeholder=p.hint; $('#cfgBaseHint').textContent=p.note.replace('{base}',p.base); $$('#providers .prov').forEach(x=>x.classList.toggle('on',x===el)); });
+  const provider=PROVIDERS[c.provider]||PROVIDERS.openai; $('#cfgBase').value=c.base||provider.base; $('#cfgModel').value=c.model||provider.model; $('#cfgKey').value=c.key||''; $('#cfgTemp').value=c.temp??0.3; $('#cfgTimeout').value=Math.round((c.timeoutMs||20000)/1000); $('#cfgBaseHint').textContent=provider.note.replace('{base}',c.base||provider.base); $('#cfgKey').placeholder=provider.hint; $('#cfgKeyHint').textContent='Chỉ lưu trong sessionStorage của tab này. Đổi provider sẽ xoá ô key để tránh gửi nhầm sang endpoint khác.'; }
+function readCfgForm(){ const provider=$('#providers .prov.on')?.dataset.p||'openai'; return {provider, base:$('#cfgBase').value.trim().replace(/\/$/,''), model:$('#cfgModel').value.trim(), key:$('#cfgKey').value.trim(), temp:parseFloat($('#cfgTemp').value)||0.3,timeoutMs:Math.max(1000,(parseFloat($('#cfgTimeout').value)||20)*1000)}; }
 $('#btnSaveCfg').onclick=()=>{ const c=readCfgForm(); if(!c.key && c.provider!=='custom'){ $('#cfgOut').textContent='Thiếu API key.'; return; } saveCfg({...c,live:true}); $('#cfgOut').textContent='Đã lưu. Chế độ LIVE bật — tab ② sẽ gọi '+c.provider+' / '+c.model+'.'; };
-$('#btnClearCfg').onclick=()=>{ localStorage.removeItem('tbm_llm_cfg'); renderProviders(); renderMode(); $('#cfgOut').textContent='Đã xoá key. Về chế độ MOCK.'; };
+$('#btnClearCfg').onclick=()=>{ sessionStorage.removeItem(CFG_KEY); localStorage.removeItem(CFG_KEY); renderProviders(); renderMode(); $('#cfgOut').textContent='Đã xoá key. Về chế độ MOCK.'; };
 $('#btnTestCfg').onclick=async()=>{ const c=readCfgForm(); $('#cfgOut').textContent='Đang gọi '+c.provider+'…'; try{ const t0=Date.now(); const txt=await callLLM([{role:'system',content:'Bạn là trợ lý kiểm tra kết nối.'},{role:'user',content:'Trả lời đúng 3 từ: "Kết nối OK".'}], c); $('#cfgOut').textContent='OK ('+(Date.now()-t0)+' ms)\n'+txt; }catch(e){ $('#cfgOut').textContent='LỖI: '+(e.message||e)+'\n\nGợi ý: kiểm tra base URL, model id, key; với Ollama cần OLLAMA_ORIGINS=* để cho phép CORS.'; } };
 
 

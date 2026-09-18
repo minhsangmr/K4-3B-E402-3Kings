@@ -2,7 +2,7 @@
 
 - **Owner:** Nguyễn Việt Hoàng (evidence · golden set)
 - **Golden version:** `v1` — nguyên bản Phụ lục A của `CP3-PLAN.md`
-- **Nguồn chuẩn:** `data/vlearn-pack` chỉ tồn tại local/ignored; golden set chỉ lưu `turn_id`, không lưu mã học viên hoặc đoạn chat dài.
+- **Nguồn chuẩn:** `eval/data/vlearn-pack` chỉ tồn tại local/ignored; golden set chỉ lưu `turn_id`, không lưu mã học viên hoặc đoạn chat dài.
 
 ## Bộ kiểm thử
 
@@ -80,7 +80,7 @@ Mỗi case phải có một tổ hợp cụ thể. Ô không có case là covera
 
 ## Cách chạy lại
 
-1. Mở `codebase/index.html` qua localhost (`python -m http.server 8000` tại thư mục repo), chọn tab ② và chạy 10–20 input trong `manual-probe.md`.
+1. Chạy `cd codebase && npm run serve`, mở `http://127.0.0.1:8000/`, chọn tab ② và chạy 10–20 input trong `manual-probe.md`.
 2. Đọc từng output và trace; ghi `dùng được`, `sửa được` hoặc `không chấp nhận được`, kèm lỗi vào `manual-probe.md`.
 3. Hai người chấm độc lập G04/G13/G14/G17/G21 theo `calibration.md`. Lệch từ 20% trở lên thì viết lại quality bar.
 4. Chọn tab ⑤, nạp `golden_set.json`, chạy MOCK để kiểm tra deterministic engine hoặc LIVE để gọi LLM thật.

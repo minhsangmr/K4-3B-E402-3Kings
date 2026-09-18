@@ -370,7 +370,7 @@ details summary{cursor:pointer;font-weight:700}
 <!-- ================= TAB 3: API ================= -->
 <section class="tab" id="tab-api">
   <h2>Cài đặt LLM (tuỳ chọn — bật chế độ Working)</h2>
-  <p class="lead">Không có key: mockup chạy engine rule-based (mock). Có key: mỗi lượt gửi là <b>một lời gọi LLM thật</b> với prompt persona Bi + 4 đoạn nguồn; code vẫn <b>giữ guard-rail</b> (tối đa 2 câu hỏi ngược, không "hiểu" khi chưa đủ tiêu chí). Key chỉ lưu trong <code>localStorage</code> trình duyệt của bạn — <b>không commit key vào repo</b>.</p>
+  <p class="lead">Không có key: mockup chạy engine rule-based (mock). Có key: mỗi lượt gửi là <b>một lời gọi LLM thật</b> với prompt persona Bi + 4 đoạn nguồn; code vẫn <b>giữ guard-rail</b> (tối đa 2 câu hỏi ngược, không "hiểu" khi chưa đủ tiêu chí). Key chỉ lưu trong <code>sessionStorage</code> của tab hiện tại — <b>không commit key vào repo</b>.</p>
   <div class="apigrid">
     <div class="card form">
       <div class="field"><label>Provider</label>
@@ -379,6 +379,7 @@ details summary{cursor:pointer;font-weight:700}
       <div class="field"><label>Model</label><input id="cfgModel" placeholder="model id"></div>
       <div class="field"><label>API key</label><input id="cfgKey" type="password" placeholder="dán key tại đây"><small id="cfgKeyHint"></small></div>
       <div class="field"><label>Nhiệt độ (temperature)</label><input id="cfgTemp" type="number" min="0" max="1" step="0.1" value="0.3"></div>
+      <div class="field"><label>Timeout mỗi request (giây)</label><input id="cfgTimeout" type="number" min="1" max="120" step="1" value="20"></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn primary" id="btnSaveCfg">Lưu &amp; bật chế độ Live</button>
         <button class="btn" id="btnTestCfg">Kiểm tra kết nối</button>
@@ -401,6 +402,7 @@ details summary{cursor:pointer;font-weight:700}
         <tr><td>Anthropic</td><td><code>https://api.anthropic.com/v1</code></td><td><code>POST /messages</code> · <code>x-api-key</code> + <code>anthropic-version</code> + <code>anthropic-dangerous-direct-browser-access</code></td></tr>
         <tr><td>Gemini</td><td><code>https://generativelanguage.googleapis.com/v1beta</code></td><td><code>POST /models/{model}:generateContent?key=</code></td></tr>
         <tr><td>OpenRouter</td><td><code>https://openrouter.ai/api/v1</code></td><td><code>POST /chat/completions</code> · Bearer · <code>HTTP-Referer</code></td></tr>
+        <tr><td>9Router</td><td><code>http://localhost:20128/v1</code></td><td><code>POST /chat/completions</code> · OpenAI-compatible</td></tr>
         <tr><td>Custom (OpenAI-compatible)</td><td>vd. <code>http://localhost:11434/v1</code> (Ollama), Groq, LM Studio</td><td><code>POST /chat/completions</code></td></tr>
       </table>
       <h3 style="margin-top:14px">Prompt gửi đi (system)</h3>
@@ -466,6 +468,7 @@ details summary{cursor:pointer;font-weight:700}
 
 <script src="ai-decision.js"></script>
 <script src="engine.js"></script>
+<script src="session-state.js"></script>
 <script src="app.js"></script>
 <script src="eval-tab.js"></script>
 </body>

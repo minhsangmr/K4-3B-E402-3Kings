@@ -75,12 +75,17 @@
     const list = casesOf(golden);
     if (!list.length) { setProgress(0, 0, 'Chưa có golden set'); return; }
     const mode = $('#ev-mode').value;
+    const config = window.getTBMConfig?.() || {};
+    if (mode === 'live' && !config.key && config.provider !== 'custom') {
+      setProgress(0, list.length, 'LIVE cần cấu hình API key ở tab ③');
+      return;
+    }
     $('#ev-run').disabled = true;
     setProgress(0, list.length, `Đang chạy ${mode.toUpperCase()}…`);
     try {
       lastRun = await window.TBM.runGoldenSet(golden, {
         mode,
-        config: window.getTBMConfig?.() || {},
+        config,
         delayMs: mode === 'mock' ? 0 : 0,
         onProgress: event => setProgress(event.index, event.total, `${event.index}/${event.total} · ${event.id} · ${event.pass ? 'PASS' : 'FAIL'}`),
       });
@@ -93,7 +98,7 @@
   $('#ev-file').addEventListener('change', event => readFile(event.target.files?.[0]));
   $('#ev-load-default').onclick = loadDefault;
   $('#ev-run').onclick = run;
-  $('#ev-export-json').onclick = () => lastRun && exportFile('run1-result.json', JSON.stringify(lastRun, null, 2), 'application/json');
-  $('#ev-export-md').onclick = () => lastRun && exportFile('run1-result.md', markdownRun(lastRun), 'text/markdown');
+  $('#ev-export-json').onclick = () => lastRun && exportFile(`${lastRun.meta?.version || 'run'}-${lastRun.meta?.mode || 'result'}.json`, JSON.stringify(lastRun, null, 2), 'application/json');
+  $('#ev-export-md').onclick = () => lastRun && exportFile(`${lastRun.meta?.version || 'run'}-${lastRun.meta?.mode || 'result'}.md`, markdownRun(lastRun), 'text/markdown');
   loadDefault();
 })();

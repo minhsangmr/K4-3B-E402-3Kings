@@ -8,17 +8,17 @@ Mỗi track mô tả các đề theo **cùng một khung mục** (người dùng
 
 | Track | Sản phẩm nền | Người dùng | Data trong repo | File |
 |---|---|---|---|---|
-| **A · VLearn Tutor** | AI tutor trong trang học VLearn — tối ưu cái đang chạy (A1) hoặc tính năng mới (A2) | Học viên; giảng viên | `data/vlearn-pack/` | `tracks/track-a-vlearn-tutor.md` |
+| **A · VLearn Tutor** | AI tutor trong trang học VLearn — tối ưu cái đang chạy (A1) hoặc tính năng mới (A2) | Học viên; giảng viên | `eval/data/vlearn-pack/` | `tracks/track-a-vlearn-tutor.md` |
 | **B · Trợ lý Discord** | Bot "Trợ lý" + bản tin ngày đang chạy — tối ưu (B1) hoặc tính năng mới cho TA (B2) | Học viên; TA/Mod | `data/discord-pack/` + quan sát Discord | `tracks/track-b-discord-assistant.md` |
 | **C · Lesson Studio** | Chuỗi sản xuất bài giảng/video VLearn — 5 đề C1–C5 (graph tri thức, QA kịch bản, nghiên cứu viết kịch bản, storyboard, phản hồi người học) | Studio team, lab coach/giảng viên; (C1, C5) người học | transcript/slide; Studio team có thể cấp thêm | `tracks/track-c-lesson-studio.md` |
-| **D · Học tập thích ứng & tương tác** | Trải nghiệm học mới trên VLearn: lớp học mô phỏng đa tác tử (D1), học từ lỗi trước (D2), học bằng cách dạy (D3), hoặc đề mới cùng khung | Học viên | `data/vlearn-pack/` + cả lớp là user | `tracks/track-d-adaptive-interactive-learning.md` |
+| **D · Học tập thích ứng & tương tác** | Trải nghiệm học mới trên VLearn: lớp học mô phỏng đa tác tử (D1), học từ lỗi trước (D2), học bằng cách dạy (D3), hoặc đề mới cùng khung | Học viên | `eval/data/vlearn-pack/` + cả lớp là user | `tracks/track-d-adaptive-interactive-learning.md` |
 | **E · Làn mở** | Bất kỳ sản phẩm AI khác — **trong phạm vi AI20k**: phải phục vụ người trong khoá (học viên, giảng viên, TA, BTC, đội sản xuất) | Tự xác định, trong khoá | bất kỳ + khảo sát | `tracks/track-e-open-lane.md` |
 
 Mọi track chấm chung `04-rubric.md`; rubric riêng trong từng đề chỉ để biết người làm thật quan tâm gì. Đề càng lớn (C, D), lát cắt càng phải nhỏ. E là làn cuối: chỉ chọn khi bài toán không nằm trong A–D.
 
 ## Data cấp cho mọi nhóm
 
-Chatlog VLearn tutor × học viên đã ẩn danh + **6 transcript bài giảng bản sạch có mã đoạn để trích dẫn** + **2 bộ slide bài giảng bản hackathon** (xem `data/vlearn-pack/`). Với Trợ lý Học viên: có **`data/discord-pack/`** — 1.092 tin nhắn Discord khoá 4 giai đoạn onboarding (đã ẩn danh) + 4 bản tin ngày bot đang tự sinh (tính năng đang chạy thật, có lỗi thật để nhóm cải tiến). Pack chỉ 3 ngày và chỉ kênh public, nên nhóm **vẫn nên quan sát trực tiếp trong Discord khoá** để có evidence mới (đây cũng là một bài tập mining thực tế). **Cả lớp là người dùng thật** — nhóm có thể khảo sát 20 người ngay trong giờ nghỉ.
+Chatlog VLearn tutor × học viên đã ẩn danh + **6 transcript bài giảng bản sạch có mã đoạn để trích dẫn** + **2 bộ slide bài giảng bản hackathon** (xem `eval/data/vlearn-pack/`). Với Trợ lý Học viên: có **`data/discord-pack/`** — 1.092 tin nhắn Discord khoá 4 giai đoạn onboarding (đã ẩn danh) + 4 bản tin ngày bot đang tự sinh (tính năng đang chạy thật, có lỗi thật để nhóm cải tiến). Pack chỉ 3 ngày và chỉ kênh public, nên nhóm **vẫn nên quan sát trực tiếp trong Discord khoá** để có evidence mới (đây cũng là một bài tập mining thực tế). **Cả lớp là người dùng thật** — nhóm có thể khảo sát 20 người ngay trong giờ nghỉ.
 
 ## Lát cắt = MỘT CÂU
 

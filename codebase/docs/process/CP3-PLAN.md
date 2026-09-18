@@ -1,5 +1,7 @@
 # CP3 — Kế hoạch phân công, quy trình Git & hướng dẫn thao tác · Nhóm 3Kings
 
+> **Ghi chú sau khi restructure:** tài liệu này là plan lịch sử của CP3. Cây nộp bài hiện tại đã chuyển `package.json`, `scripts/`, `tests/` vào `codebase/`, data local vào `eval/data/`, note video vào `codebase/docs/demo-video.md`, và thông tin nhóm/canvas vào `reflection/`.
+>
 > **Hạn nộp form CP3: 16:00 · 18/9.** Deliverable: (1) codebase có **lời gọi AI thật** tại điểm quyết định trung tâm + **ghi vết prompt/phản hồi thô**, (2) `eval/` có **≥20 case** phân loại theo 4 lớp chỗ khó + **kết quả chạy lượt 1** (đạt/thất bại/%/nguyên nhân), (3) **video 30 giây** thao tác thật, (4) mỗi thành viên **≥1 commit** trên repo chung.
 >
 > Tài liệu này là "nguồn sự thật" cho 5 giờ tới. Mỗi người đọc **§0, §3** và **mục của mình** (§4 Sang · §5 Hoàng · §6 Phát). Đội trưởng đọc thêm §7.
@@ -11,7 +13,7 @@
 | Ai | Vai trò CP3 | Làm gì (file sở hữu) | Branch | Số commit tối thiểu |
 |---|---|---|---|---|
 | **Sang** (leader · AI architecture) | Engine + LLM thật + eval runner | `codebase/engine.js`, `codebase/eval-tab.js`, `eval/run1-*.json`, `eval/README.md` (phần "cách chạy") | `cp3/sang-split-engine` → `cp3/sang-llm-trace-eval-runner` → `cp3/sang-run1-results` | 3 |
-| **Hoàng** (evidence · golden set) | Golden set từ `data/vlearn-pack` + chuẩn "đạt" + phân tích lỗi | `eval/golden_set.json`, `eval/README.md` (grid + schema), `eval/manual-probe.md`, `eval/calibration.md`, `eval/results-run1.md` | `cp3/hoang-golden-set` → `cp3/hoang-run1-analysis` | 2 |
+| **Hoàng** (evidence · golden set) | Golden set từ `eval/data/vlearn-pack` + chuẩn "đạt" + phân tích lỗi | `eval/golden_set.json`, `eval/README.md` (grid + schema), `eval/manual-probe.md`, `eval/calibration.md`, `eval/results-run1.md` | `cp3/hoang-golden-set` → `cp3/hoang-run1-analysis` | 2 |
 | **Phát** (UI · demo · repo owner) | Xây UI, video 30s, README, setup repo | `codebase/index.html` (HTML/CSS), `codebase/app.js`, `codebase/README.md`, `demo/`, `.gitignore`, `README.md` | `cp3/phat-ui` → `cp3/phat-video-readme` | 2 |
 
 **Thứ tự merge vào `main` (bắt buộc, để không conflict):**
@@ -342,7 +344,7 @@ PR → Approve → merge → nhắn "M5 merged, số lượt 1: mock X/25, live 
 
 ---
 
-## §5. HOÀNG — Golden set từ `data/vlearn-pack`, chuẩn "đạt", phân tích lỗi
+## §5. HOÀNG — Golden set từ `eval/data/vlearn-pack`, chuẩn "đạt", phân tích lỗi
 
 **Mục tiêu của Hoàng:** đến M2 có `eval/golden_set.json` 25 case đúng cơ cấu, mỗi case trỏ được nguồn (turn_id hoặc synthetic) và có expected suy từ spec; đến M6 có `eval/results-run1.md` với bảng % và nguyên nhân từng nhóm lỗi. **Hoàng phải giải thích được từng case khi giám khảo hỏi** (vibe-coding rule) — nên dù dùng AI để soạn, hãy tự đọc từng `turn_id` gốc.
 
@@ -364,13 +366,13 @@ git checkout main && git pull --ff-only origin main
 git checkout -b cp3/hoang-golden-set
 ```
 
-**Bước 1 — Đọc nguồn thật.** Data pack phải có ở máy Hoàng tại `data/vlearn-pack/` (gitignore, không commit). In ra các lượt gốc để đọc:
+**Bước 1 — Đọc nguồn thật.** Data pack phải có ở máy Hoàng tại `eval/data/vlearn-pack/` (gitignore, không commit). In ra các lượt gốc để đọc:
 
 ```bash
 python3 - <<'EOF'
 import csv, re
 ids = "T10975 T10501 T10934 T05317 T08894 T12774 T09298 T12581 T10472 T11039 T11042 T04154 T01232 T10366 T03650 T01922 T10365 T08616 T05810 T04100 T03329 T02417 T11723 T11786 T10366".split()
-rows = {r['turn_id']: r for r in csv.DictReader(open('data/vlearn-pack/chatlog/tutor_turns.csv', encoding='utf-8'))}
+rows = {r['turn_id']: r for r in csv.DictReader(open('eval/data/vlearn-pack/chatlog/tutor_turns.csv', encoding='utf-8'))}
 for t in ids:
     r = rows[t]; q = re.sub(r'\s+', ' ', r['student_question'])
     print(f"\n=== {t} · {r['cohort_hint']} · {r['lecture_code']} · move={r['move_used']} ===\nHV: {q[:400]}\nTUTOR: {re.sub(r'\s+',' ', r['tutor_reply'])[:300]}")

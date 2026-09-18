@@ -1,0 +1,188 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [5 0 R 7 0 R 9 0 R 11 0 R 13 0 R 15 0 R] /Count 6 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Length 230 >>
+stream
+BT
+/F1 30 Tf
+72 520 Td
+(3Kings - TeachBack Mentor) Tj
+/F1 14 Tf
+0 -44 Td
+( - Track D3: hoc bang cach day) Tj
+0 -24 Td
+( - SPEC -> Prototype -> Demo) Tj
+0 -24 Td
+( - Lop 3B - E402) Tj
+0 -24 Td
+/F1 10 Tf
+0 -64 Td
+(Slide 1 / 6) Tj
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 792 612] /Resources << /Font << /F1 3 0 R >> >> /Contents 4 0 R >>
+endobj
+6 0 obj
+<< /Length 338 >>
+stream
+BT
+/F1 30 Tf
+72 520 Td
+(Problem and Evidence) Tj
+/F1 14 Tf
+0 -44 Td
+( - K4 tutor turns: 3,097) Tj
+0 -24 Td
+( - ask_probing_question: 6 / 3,097 = 0.19%) Tj
+0 -24 Td
+( - Direct explanation style: 448 / 457 = 98.03%) Tj
+0 -24 Td
+( - Pain: learner may think they understand before applying.) Tj
+0 -24 Td
+/F1 10 Tf
+0 -64 Td
+(Slide 2 / 6) Tj
+ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 792 612] /Resources << /Font << /F1 3 0 R >> >> /Contents 6 0 R >>
+endobj
+8 0 obj
+<< /Length 363 >>
+stream
+BT
+/F1 30 Tf
+72 520 Td
+(One-Sentence Slice) Tj
+/F1 14 Tf
+0 -44 Td
+( - Learner teaches Bi why LLMs hallucinate.) Tj
+0 -24 Td
+( - AI checks explanation against 4 transcript ideas.) Tj
+0 -24 Td
+( - Bi asks at most 2 probing questions without leaking answers.) Tj
+0 -24 Td
+( - Outcome: learner knows what to review.) Tj
+0 -24 Td
+/F1 10 Tf
+0 -64 Td
+(Slide 3 / 6) Tj
+ET
+endstream
+endobj
+9 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 792 612] /Resources << /Font << /F1 3 0 R >> >> /Contents 8 0 R >>
+endobj
+10 0 obj
+<< /Length 342 >>
+stream
+BT
+/F1 30 Tf
+72 520 Td
+(Prototype) Tj
+/F1 14 Tf
+0 -44 Td
+( - Static web app in codebase/) Tj
+0 -24 Td
+( - Mock mode: rule-based engine runs locally.) Tj
+0 -24 Td
+( - Live mode: LLM call through provider adapter.) Tj
+0 -24 Td
+( - Trace drawer stores prompt, raw response, parsed JSON, guard.) Tj
+0 -24 Td
+/F1 10 Tf
+0 -64 Td
+(Slide 4 / 6) Tj
+ET
+endstream
+endobj
+11 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 792 612] /Resources << /Font << /F1 3 0 R >> >> /Contents 10 0 R >>
+endobj
+12 0 obj
+<< /Length 352 >>
+stream
+BT
+/F1 30 Tf
+72 520 Td
+(Evaluation) Tj
+/F1 14 Tf
+0 -44 Td
+( - Golden set: 25 cases in eval/golden_set.json) Tj
+0 -24 Td
+( - Run 1 mock/live JSON kept in eval/) Tj
+0 -24 Td
+( - Current mock tests expect 25/25 on rule-v1.1) Tj
+0 -24 Td
+( - Evaluation data pack stays local and ignored under eval/data/.) Tj
+0 -24 Td
+/F1 10 Tf
+0 -64 Td
+(Slide 5 / 6) Tj
+ET
+endstream
+endobj
+13 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 792 612] /Resources << /Font << /F1 3 0 R >> >> /Contents 12 0 R >>
+endobj
+14 0 obj
+<< /Length 336 >>
+stream
+BT
+/F1 30 Tf
+72 520 Td
+(Validation and Demo) Tj
+/F1 14 Tf
+0 -44 Td
+( - R6 logs belong in validation/) Tj
+0 -24 Td
+( - Need 5 outside users, 2 declared from CP1.) Tj
+0 -24 Td
+( - Record task, blocker, verbatim quote, and decision.) Tj
+0 -24 Td
+( - Reflection files live in reflection/.) Tj
+0 -24 Td
+/F1 10 Tf
+0 -64 Td
+(Slide 6 / 6) Tj
+ET
+endstream
+endobj
+15 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 792 612] /Resources << /Font << /F1 3 0 R >> >> /Contents 14 0 R >>
+endobj
+xref
+0 16
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000154 00000 n 
+0000000224 00000 n 
+0000000505 00000 n 
+0000000631 00000 n 
+0000001020 00000 n 
+0000001146 00000 n 
+0000001560 00000 n 
+0000001686 00000 n 
+0000002080 00000 n 
+0000002208 00000 n 
+0000002612 00000 n 
+0000002740 00000 n 
+0000003128 00000 n 
+trailer
+<< /Size 16 /Root 1 0 R >>
+startxref
+3256
+%%EOF

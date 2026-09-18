@@ -1,4 +1,4 @@
-# demo/ — Video CP3 (thao tác thật, 30 giây)
+# Demo video — CP3 thao tác thật, 30 giây
 
 | | |
 |---|---|
@@ -19,4 +19,4 @@
 | 20–27 | Gửi *happy2* | "Mình hiểu rồi! Để mình nói lại…" + tóm tắt bằng lời học viên, nút "Bi hiểu sai ý mình → sửa" |
 | 27–30 | Nhật ký phiên (cột phải) | Dòng `understood · conf=high · llm` |
 
-Cách kiểm tra lại: mở `codebase/index.html`, tab ③ nhập key (chỉ lưu localStorage), bật Live, lặp đúng các bước trên. Số đo đi kèm video: `eval/results-run1.md`.
+Cách kiểm tra lại: chạy `cd codebase && npm run serve`, mở tab ③ nhập key (chỉ lưu localStorage), bật Live, lặp đúng các bước trên. Số đo đi kèm video: `eval/results-run1.md`.
