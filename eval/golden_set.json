@@ -18,7 +18,7 @@
     {"id":"G02","group":"common","rare":false,"layer":null,"title":"Trực giác 'xác suất cao = chắc chắn đúng' → Bi hỏi vào K2",
      "source":{"type":"chatlog","turn_ids":["T10501"],"how":"K4 hỏi 'khi một từ có xác suất xuất hiện cao thì nó sẽ chắc chắn xuất hiện?' → chuyển thành khẳng định của HV"},
      "persona":"newbie","grid":{"coverage":"1-2","phrasing":"own","truth":"correct","intent":"teach","turn":"1"},
-     "turns":["LLM sinh văn bản bằng cách chọn từ có xác suất cao nhất. Nên từ nào xác suất cao là chắc chắn đúng, chỉ khi xác suất thấp nó mới bịa."],
+     "turns":["LLM sinh văn bản bằng cách chọn lọc từ dựa trên từ có xác suất cao nhất. Nên từ nào xác suất cao là chắc chắn đúng, chỉ khi xác suất thấp nó mới bịa."],
      "expected":{"action":["probe"],"target_idea":["K2"],"must_not_match":"kiểm tra sự thật|không có bước"},
      "pass_definition":"Bi hỏi ngược vào K2 (vì sao 'khả năng cao' vẫn có thể sai) mà không nói ra nội dung K2."},
 
