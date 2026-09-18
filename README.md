@@ -314,7 +314,7 @@ Làm ở **CP5**, lưu trong thư mục `validation/`.
 
 | | |
 |---|---|
-| **5 người ngoài nhóm** dùng thử | trong đó **2 người đã khai từ CP1** |
+| **3 người ngoài nhóm** dùng thử | danh sách willing users tại `validation/participants.md` |
 | **Quote nguyên văn** | chép đúng lời họ nói, kể cả viết sai chính tả |
 | **Bảng nhật ký** | ai thử · giao task gì · kẹt ở đâu · quote · quyết định |
 | **Ít nhất 1 thay đổi** | ghi vào **§9 Changelog** trong `spec.md`. Giữ nguyên thì nói rõ vì sao |

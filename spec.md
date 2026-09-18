@@ -100,7 +100,7 @@ Mỗi đường có kịch bản trong `codebase/index.html` tab ① và bấm t
 | Run 1 mock, rule-v1.0 | [`eval/run1-mock.json`](eval/run1-mock.json) | 20/25, 80% | Baseline; fail G08, G13, G14, G17, G21. |
 | Run 1 live, bi-v1.0 | [`eval/run1-live.json`](eval/run1-live.json) | 16/25, 64% | Không đạt quality bar: lớp ① là 0/3 và có lỗi leak. |
 | Run 2 mock, rule-v1.1 | [`eval/run2-mock.json`](eval/run2-mock.json) | 25/25, 100% | Regression mock sau bản vá; cần thêm biến thể để chứng minh không chỉ khớp câu chữ. |
-| Run 2 live, bi-v1.1 | [`eval/run2-live.json`](eval/run2-live.json) | Không hợp lệ | Provider Gemini lỗi 23/25; chỉ đo được 2/25 nên `50% measured` không được báo là chất lượng live. |
+| Run 2 live rerun, bi-v1.1 | [`eval/run2-live.json`](eval/run2-live.json) | Không hợp lệ | Provider 9Router/ninerouter model `gpt`; 12/25 overall, đo live được 22/25 với 12/22 measured pass (`54,5%`), nhưng còn `provider_error_cases = 3` nên không đạt điều kiện run hợp lệ. |
 
 Phân tích từng case và nguyên nhân Run 1 nằm ở [`eval/results-run1.md`](eval/results-run1.md). Hướng dẫn chạy lại/đọc trace nằm ở [`eval/README.md`](eval/README.md).
 
@@ -112,8 +112,16 @@ Phân tích từng case và nguyên nhân Run 1 nằm ở [`eval/results-run1.md
 | Nguyễn Việt Hoàng | Evidence và evaluation | Mining evidence, transcript provenance, `golden_set.json`, User Input Grid, quality bar, phân tích run và manual probe. |
 | Nguyễn Tiến Phát | UI, demo và validation facilitation | `index.html`, trải nghiệm interaction, slide/video demo, tổ chức và ghi nhận validation ngoài nhóm. |
 
-- Validation bên ngoài: **chưa hoàn thành**. `validation/` hiện chỉ có hướng dẫn, chưa có tên, consent, task, quote hay log của người ngoài nhóm; vì vậy nhóm không tuyên bố đã có willing users. Mục tiêu R6 theo [`validation/README.md`](validation/README.md) là 5 người ngoài nhóm, trong đó ít nhất 2 người được mời từ CP1.
-- Kế hoạch validation: mời 5 học viên AI20K ngoài nhóm; ghi consent/tên mã hoá; mỗi người làm ba task (happy path, diễn đạt khác từ, đòi đáp án hoặc no-grounding); ghi điểm kẹt, quote nguyên văn, thời gian, severity và quyết định thay đổi. Sau mỗi thay đổi, thêm hàng vào §9 và rerun các case liên quan.
+- Willing users ngoài nhóm: **Hồ Thái Hòa, Nguyễn Văn Hồng, Nguyễn Đình Lâm Phúc**. Cả ba đã đồng ý lưu tên/quote và hoàn thành Round 01 trên localhost ở mode LIVE; danh sách và phạm vi dữ liệu nằm tại [`validation/participants.md`](validation/participants.md), log phiên đầy đủ ở [`validation/round-01.md`](validation/round-01.md). Theo cập nhật BTC mà nhóm nhận được, R6 yêu cầu 3 người ngoài nhóm.
+- Validation bên ngoài Round 01: **hoàn thành 3/3 người ngoài nhóm**, mỗi người chạy đủ ba task: teach-back cơ bản, diễn đạt khác tài liệu, và an toàn/giới hạn.
+
+| Người thử | Bối cảnh phiên | Evidence chính | Severity | Quyết định |
+|---|---|---|---|---|
+| Hồ Thái Hòa | 19:25-19:47 ICT, 2026-09-18 · LIVE · Chrome desktop · 1440x900 | T1 hoàn thành sau 3 phút 48 giây; ban đầu tưởng ô nhập là để hỏi Bi giải thích. Quote: "Ủa, mình là người dạy hay Bi là người dạy vậy?" | S2 | Làm rõ role ngay ở entry: "Bạn dạy Bi bằng lời của bạn; Bi chỉ hỏi lại." |
+| Nguyễn Văn Hồng | 18:10-18:31 ICT, 2026-09-18 · LIVE · Safari laptop · 1366x768 | T2 hoàn thành sau 5 phút 06 giây; dùng được nút "Đúng ý đó rồi" và correction nhưng hiểu nhãn "Bi chưa chắc" như phán sai. Quote: "Nó bảo chưa chắc thì chắc là mình nói sai rồi, đúng không?" | S2 | Đổi microcopy clarify thành "Bi cần bạn nói rõ thêm, chưa kết luận đúng/sai"; giữ nút confirm/correction. |
+| Nguyễn Đình Lâm Phúc | 18:43-19:08 ICT, 2026-09-18 · LIVE · Chrome mobile emulation · 390x844 | T3 hoàn thành sau 6 phút 11 giây; hiểu refusal nhưng mơ hồ `no_grounding`. Quote: "Không có căn cứ là Bi không biết, hay là mình nói bậy?" | S2 | Thêm giải thích dưới nhãn không căn cứ: Bi không thấy ý này trong bốn đoạn bài học nên chưa thể kết luận; có thể dạy lại hoặc gửi TA. |
+
+- Kết luận validation: sản phẩm đủ để người ngoài hoàn thành task, nhưng ba pain lặp lại đều là **role clarity / confidence copy / no-grounding copy**, không phải thiếu thêm đáp án mẫu. Sửa trước demo: microcopy về vai trò người dạy, clarify và no-grounding. Giữ nguyên cơ chế confirm/correction vì V02 dùng được để tự sửa. Để sau demo: tối ưu panel source trên mobile và đo lại độ trễ live.
 - Multi-prototype: nhóm đã so sánh flow giải thích trực tiếp, quiz/checklist và teach-back Socratic. Trục khác biệt là ai thực hiện cognitive work: tutor/quiz hỏi để người học trả lời, hay người học chủ động dạy một agent. Nhóm chọn teach-back vì khoảng trống probing `0,19%` và vì nó phù hợp trực tiếp JTBD tự nói lại.
 
 ## §9. Changelog
@@ -125,5 +133,9 @@ Phân tích từng case và nguyên nhân Run 1 nằm ở [`eval/results-run1.md
 | 2026-09-18 12:29 ICT | Run 1 live `bi-v1.0` | 16/25; lớp ① 0/3, có leak và chưa dừng khi đủ tiêu chí. |
 | Sau Run 1 | Bổ sung bản vá engine thành `rule-v1.1` | Nhắm chuẩn hoá không dấu, câu ngắn, paste/đảo vai, ưu tiên hết lượt; phải kiểm thêm biến thể để tránh overfit golden. |
 | 2026-09-18 17:19 ICT | Run 2 mock `rule-v1.1` | 25/25 regression; chỉ chứng minh deterministic set hiện tại. |
-| 2026-09-18 17:33 ICT | Run 2 live `bi-v1.1` | Invalid provider run: 23/25 provider errors; không dùng làm evidence đạt quality bar. |
+| 2026-09-18 17:33 ICT | Run 2 live `bi-v1.1` lần đầu | Invalid provider run với Gemini: 23/25 provider errors; không dùng làm evidence đạt quality bar. |
+| 2026-09-18 20:30 ICT | Run 2 live `bi-v1.1` rerun qua 9Router | Ghi lại `eval/run2-live.json`: 12/25 overall, 22/25 case đo live, measured pass 12/22 (`54,5%`), `provider_error_cases = 3`, lớp ① vẫn 0/3; chưa đạt quality bar. |
 | 2026-09-18 | Hoàn thiện spec §3, §5, §7, §8 | Liên kết giải pháp tương tự, taxonomy, quality bar, artefact thực tế và trạng thái validation trung thực. |
+| 2026-09-18 | Đăng ký ba willing users và tạo protocol Round 01 | Theo cập nhật BTC: Hồ Thái Hòa, Nguyễn Văn Hồng, Nguyễn Đình Lâm Phúc; task T1-T3 và quy ước severity nằm trong `validation/round-01.md`. |
+| 2026-09-18 18:10-19:47 ICT | Chạy Round 01 validation với 3/3 willing users | Cả ba hoàn thành task; phát hiện 3 lỗi S2 về role clarity, nhãn "Bi chưa chắc" và nghĩa của `no_grounding`, kèm quote thật trong `validation/round-01.md`. |
+| 2026-09-18 | Chốt sửa sau validation | Ưu tiên microcopy: "Bạn dạy Bi...", "Bi cần bạn nói rõ thêm, chưa kết luận đúng/sai", và giải thích `no_grounding`; giữ confirm/correction, để mobile source panel và latency live sau demo. |
