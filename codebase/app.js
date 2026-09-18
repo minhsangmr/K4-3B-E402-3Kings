@@ -310,7 +310,7 @@ async function sendText(text, opt={}){
   TBM.applyResult(S_, r);
   if(r.misconception) logAdd('misconception', r.misconception);
   S_.lastAction=r.action; renderCoverage(); renderProbes(); addReview(r.review);
-  logAdd(r.action, `conf=${r.confidence} · cov=${IDEAS.map(k=>k.id[1]+':'+(S_.confirmed[k.id]?'hit':S_.coverage[k.id])[0]).join(' ')} · ex=${S_.examples} · probes=${S_.probes}/${S_.probeLimit}${r.source==='llm'?' · llm':''}${r.guard?' · GUARD':''}`);
+  logAdd(r.action, `conf=${r.confidence} · cov=${IDEAS.map(k=>k.id[1]+':'+(S_.confirmed[k.id]?'hit':S_.coverage[k.id])[0]).join(' ')} · ex=${S_.examples} · probes=${S_.probes}/${S_.probeLimit}${r.source==='llm'?' · llm':''}${r.guard?' · GUARD':''}`, {trace:r.trace || null});
   S_.history.push({role:'assistant',content:r.message + (r.summary?'\n'+r.summary.join('\n'):'')});
   addBi(r); $('#btnSend').disabled=false; $('#mk-input').focus();
   return r;

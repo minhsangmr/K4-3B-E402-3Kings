@@ -1,1 +1,4 @@
 data/vlearn-pack/
+.env
+.env.*
+!.env.example

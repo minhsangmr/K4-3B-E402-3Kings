@@ -367,11 +367,12 @@ details summary{cursor:pointer;font-weight:700}
     <div class="card panel">
       <h3>Endpoint mỗi provider</h3>
       <table class="t">
-        <tr><th>Provider</th><th>Base URL mặc định</th><th>Endpoint / auth</th></tr>
-        <tr><td>OpenAI</td><td><code>https://api.openai.com/v1</code></td><td><code>POST /chat/completions</code> · <code>Authorization: Bearer</code></td></tr>
-        <tr><td>Anthropic</td><td><code>https://api.anthropic.com/v1</code></td><td><code>POST /messages</code> · <code>x-api-key</code> + <code>anthropic-version</code> + <code>anthropic-dangerous-direct-browser-access</code></td></tr>
-        <tr><td>Gemini</td><td><code>https://generativelanguage.googleapis.com/v1beta</code></td><td><code>POST /models/{model}:generateContent?key=</code></td></tr>
-        <tr><td>OpenRouter</td><td><code>https://openrouter.ai/api/v1</code></td><td><code>POST /chat/completions</code> · Bearer · <code>HTTP-Referer</code></td></tr>
+        <tr><th>Provider</th><th>Base URL mặc định</th><th>Request → response text</th></tr>
+        <tr><td>OpenAI</td><td><code>https://api.openai.com/v1</code></td><td><code>POST /chat/completions</code> · <code>{model,messages}</code> → <code>choices[0].message.content</code></td></tr>
+        <tr><td>Anthropic</td><td><code>https://api.anthropic.com/v1</code></td><td><code>POST /messages</code> · <code>{system,messages}</code> → <code>content[].text</code></td></tr>
+        <tr><td>Gemini</td><td><code>https://generativelanguage.googleapis.com/v1beta</code></td><td><code>POST /models/{model}:generateContent</code> · <code>{system_instruction,contents}</code> → <code>candidates[0].content.parts[].text</code></td></tr>
+        <tr><td>OpenRouter</td><td><code>https://openrouter.ai/api/v1</code></td><td><code>POST /chat/completions</code> · OpenAI-compatible · Bearer</td></tr>
+        <tr><td>9Router</td><td><code>http://localhost:20128/v1</code> (local)<br><code>https://9router.com/v1</code> (cloud nếu tài khoản hỗ trợ)</td><td><code>POST /chat/completions</code> · OpenAI-compatible · Bearer</td></tr>
         <tr><td>Custom (OpenAI-compatible)</td><td>vd. <code>http://localhost:11434/v1</code> (Ollama), Groq, LM Studio</td><td><code>POST /chat/completions</code></td></tr>
       </table>
       <h3 style="margin-top:14px">Prompt gửi đi (system)</h3>

@@ -53,6 +53,7 @@ const SAMPLES = {
 const EXAMPLE_RE = /ví dụ|chẳng hạn|giả sử|hồi (mình|tôi|em)|lần (mình|tôi|em)|có lần|hôm (trước|qua|nọ)|mình (từng|đã) (hỏi|thử)|như lúc mình/iu;
 const ASK_RE = /cho (mình|tôi|em|tớ) (đáp án|câu trả lời)|đáp án (là gì|đi)|nói đáp án|(trả lời|giải thích) (giúp|hộ|cho) (mình|tôi|em)|không biết giải thích|bạn giải thích đi|gợi ý (đáp án|đi)/iu;
 const RANK = {miss:0, partial:1, hit:2};
+const PROMPT_VERSION = 'bi-v1.0';
 
 /* =====================================================================
    2. ENGINE ĐỐI CHIẾU (rule-based, chạy thật) — dùng chung cho tab ① và ②
@@ -78,7 +79,7 @@ function analyze(text){
 }
 
 // state: {coverage, confirmed, examples, probes, probeLimit, answered, pendingProbe, history, log}
-function decide(text, state, persona){
+function decideCore(text, state, persona){
   const a = analyze(text);
   const merged = {};
   for(const k of IDEAS){ const prev=state.coverage[k.id]||'miss'; const cur=a.coverage[k.id]; merged[k.id] = state.confirmed[k.id] ? 'hit' : (RANK[cur]>RANK[prev]?cur:prev); }
@@ -124,6 +125,17 @@ function decide(text, state, persona){
     why:'Đã hết 2 lượt hỏi ngược mà chưa đủ tiêu chí → Bi không giả vờ hiểu (hard test "hiểu quá dễ"); nêu tên ý còn thiếu ở mức chung, không nói nội dung.'};
 }
 
+function decide(text, state, persona='newbie'){
+  const r = decideCore(text, state || newState(), persona);
+  r.trace = {
+    mode:'mock',
+    prompt_version:'rule-v1.0',
+    latency_ms:0,
+    rule_path:r.action,
+  };
+  return r;
+}
+
 function newState(){
   const state = {coverage:{}, confirmed:{}, evidenceAll:{}, examples:0, probes:0, probeLimit:2, answered:0, pendingProbe:false, history:[]};
   IDEAS.forEach(k=>state.coverage[k.id]='miss');
@@ -144,30 +156,95 @@ function applyResult(state, r){
 }
 
 const PROVIDERS = {
-  openai:{name:'OpenAI', base:'https://api.openai.com/v1', model:'gpt-4o-mini', hint:'sk-…', note:'POST {base}/chat/completions'},
-  anthropic:{name:'Anthropic (Claude)', base:'https://api.anthropic.com/v1', model:'claude-sonnet-5', hint:'sk-ant-…', note:'POST {base}/messages · gọi thẳng từ trình duyệt cần header anthropic-dangerous-direct-browser-access'},
-  gemini:{name:'Google Gemini', base:'https://generativelanguage.googleapis.com/v1beta', model:'gemini-2.5-flash', hint:'AIza…', note:'POST {base}/models/{model}:generateContent?key=…'},
-  openrouter:{name:'OpenRouter', base:'https://openrouter.ai/api/v1', model:'openai/gpt-4o-mini', hint:'sk-or-v1-…', note:'POST {base}/chat/completions · model dạng vendor/model'},
-  custom:{name:'Custom (OpenAI-compatible)', base:'http://localhost:11434/v1', model:'llama3.1', hint:'(có thể để trống với Ollama)', note:'Ollama / LM Studio / Groq / bất kỳ endpoint /chat/completions'},
+  openai:{name:'OpenAI', protocol:'openai-chat', base:'https://api.openai.com/v1', model:'gpt-4o-mini', endpoint:'/chat/completions', response_path:'choices[0].message.content', key_env:'OPENAI_API_KEY', base_env:'OPENAI_BASE_URL', hint:'sk-…', note:'POST {base}/chat/completions'},
+  anthropic:{name:'Anthropic (Claude)', protocol:'anthropic-messages', base:'https://api.anthropic.com/v1', model:'claude-sonnet-5', endpoint:'/messages', response_path:'content[].text', key_env:'ANTHROPIC_API_KEY', base_env:'ANTHROPIC_BASE_URL', hint:'sk-ant-…', note:'POST {base}/messages · gọi thẳng từ trình duyệt cần header anthropic-dangerous-direct-browser-access'},
+  gemini:{name:'Google Gemini', protocol:'gemini-generate-content', base:'https://generativelanguage.googleapis.com/v1beta', model:'gemini-2.5-flash', endpoint:'/models/{model}:generateContent', response_path:'candidates[0].content.parts[].text', key_env:'GEMINI_API_KEY', base_env:'GEMINI_BASE_URL', hint:'AIza…', note:'POST {base}/models/{model}:generateContent · x-goog-api-key'},
+  openrouter:{name:'OpenRouter', protocol:'openai-chat', base:'https://openrouter.ai/api/v1', model:'openai/gpt-4o-mini', endpoint:'/chat/completions', response_path:'choices[0].message.content', key_env:'OPENROUTER_API_KEY', base_env:'OPENROUTER_BASE_URL', hint:'sk-or-v1-…', note:'POST {base}/chat/completions · model dạng vendor/model'},
+  ninerouter:{name:'9Router', protocol:'openai-chat', base:'http://localhost:20128/v1', cloud_base:'https://9router.com/v1', model:'cc/claude-sonnet-5', endpoint:'/chat/completions', response_path:'choices[0].message.content', key_env:'NINE_ROUTER_API_KEY', base_env:'NINE_ROUTER_BASE_URL', hint:'Endpoint API key từ dashboard 9Router', note:'OpenAI-compatible · local {base}; cloud https://9router.com/v1 khi tài khoản hỗ trợ'},
+  custom:{name:'Custom (OpenAI-compatible)', protocol:'openai-chat', base:'http://localhost:11434/v1', model:'llama3.1', endpoint:'/chat/completions', response_path:'choices[0].message.content', key_env:'CUSTOM_LLM_API_KEY', base_env:'CUSTOM_LLM_BASE_URL', hint:'(có thể để trống với Ollama)', note:'Ollama / LM Studio / Groq / bất kỳ endpoint /chat/completions'},
 };
 
-async function callLLM(messages, c){
-  c = c || {provider:'openai',base:PROVIDERS.openai.base,model:PROVIDERS.openai.model,key:'',temp:0.3,live:false};
-  const sys = messages.filter(m=>m.role==='system').map(m=>m.content).join('\n'); const rest = messages.filter(m=>m.role!=='system');
-  const jsonErr = async r => { const t=await r.text(); throw new Error(r.status+' '+t.slice(0,300)); };
-  if(c.provider==='anthropic'){
-    const r=await fetch(c.base+'/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':c.key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:c.model,max_tokens:1024,temperature:c.temp,system:sys,messages:rest})});
-    if(!r.ok) await jsonErr(r); const d=await r.json(); return d.content.map(x=>x.text||'').join('');
+function defaultConfig(){
+  return {provider:'openai', base:PROVIDERS.openai.base, model:PROVIDERS.openai.model, key:'', temp:0.3, live:false};
+}
+
+function buildProviderRequest(messages, config){
+  const c = {...defaultConfig(), ...(config || {})};
+  const provider = PROVIDERS[c.provider] || PROVIDERS.custom;
+  const base = String(c.base || provider.base).replace(/\/+$/, '');
+  const system = messages.filter(m=>m.role==='system').map(m=>m.content).join('\n');
+  const rest = messages.filter(m=>m.role!=='system');
+  const headers = {'content-type':'application/json'};
+
+  if(c.provider === 'anthropic'){
+    headers['x-api-key'] = c.key || '';
+    headers['anthropic-version'] = '2023-06-01';
+    headers['anthropic-dangerous-direct-browser-access'] = 'true';
+    return {provider:c.provider, protocol:provider.protocol, url:base+provider.endpoint, method:'POST', headers,
+      body:{model:c.model, max_tokens:1024, temperature:c.temp, system, messages:rest}};
   }
-  if(c.provider==='gemini'){
-    const r=await fetch(`${c.base}/models/${encodeURIComponent(c.model)}:generateContent?key=${encodeURIComponent(c.key)}`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({system_instruction:{parts:[{text:sys}]},contents:rest.map(m=>({role:m.role==='assistant'?'model':'user',parts:[{text:m.content}]})),generationConfig:{temperature:c.temp}})});
-    if(!r.ok) await jsonErr(r); const d=await r.json(); return d.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('')||'';
+
+  if(c.provider === 'gemini'){
+    headers['x-goog-api-key'] = c.key || '';
+    return {provider:c.provider, protocol:provider.protocol,
+      url:`${base}/models/${encodeURIComponent(c.model)}:generateContent`, method:'POST', headers,
+      body:{system_instruction:{parts:[{text:system}]}, contents:rest.map(m=>({role:m.role==='assistant'?'model':'user', parts:[{text:m.content}]})), generationConfig:{temperature:c.temp}}};
   }
-  // openai / openrouter / custom → OpenAI-compatible chat completions
-  const headers={'content-type':'application/json'}; if(c.key) headers['Authorization']='Bearer '+c.key;
-  if(c.provider==='openrouter'){ headers['HTTP-Referer']=location.origin||'http://localhost'; headers['X-Title']='TeachBack Mentor'; }
-  const r=await fetch(c.base+'/chat/completions',{method:'POST',headers,body:JSON.stringify({model:c.model,temperature:c.temp,messages:[{role:'system',content:sys},...rest]})});
-  if(!r.ok) await jsonErr(r); const d=await r.json(); return d.choices?.[0]?.message?.content||'';
+
+  if(c.key) headers.Authorization = 'Bearer '+c.key;
+  if(c.provider === 'openrouter'){
+    headers['HTTP-Referer'] = c.referer || 'http://localhost';
+    headers['X-OpenRouter-Title'] = 'TeachBack Mentor';
+  }
+  return {provider:c.provider, protocol:provider.protocol, url:base+provider.endpoint, method:'POST', headers,
+    body:{model:c.model, temperature:c.temp, stream:false, messages:[{role:'system',content:system}, ...rest]}};
+}
+
+function textContent(content){
+  if(typeof content === 'string') return content;
+  if(Array.isArray(content)) return content.map(part=>typeof part === 'string' ? part : (part?.text || '')).join('');
+  return '';
+}
+
+function parseProviderResponse(provider, data){
+  if(provider === 'anthropic') return (data.content || []).map(part=>part?.type === 'text' ? part.text : '').join('');
+  if(provider === 'gemini') return (data.candidates?.[0]?.content?.parts || []).map(part=>part?.text || '').join('');
+  return textContent(data.choices?.[0]?.message?.content);
+}
+
+const waitForMs = ms => new Promise(resolve=>setTimeout(resolve, ms));
+
+async function requestProvider(messages, config){
+  const request = buildProviderRequest(messages, config);
+  const response = await fetch(request.url, {method:request.method, headers:request.headers, body:JSON.stringify(request.body)});
+  const rawBody = await response.text();
+  let data = null;
+  try{ data = rawBody ? JSON.parse(rawBody) : {}; }
+  catch{ if(response.ok) throw new Error('Provider trả response không phải JSON: '+rawBody.slice(0,200)); }
+  if(!response.ok){
+    const error = new Error(`HTTP ${response.status} ${rawBody.slice(0,300)}`.trim());
+    error.status = response.status;
+    throw error;
+  }
+  const text = parseProviderResponse(request.provider, data || {});
+  if(!text) throw new Error('Provider trả response rỗng hoặc sai cấu trúc');
+  return text;
+}
+
+async function callLLM(messages, config){
+  const c = {...defaultConfig(), ...(config || {})};
+  const retryDelays = Array.isArray(c.retryDelaysMs) ? c.retryDelaysMs : [2000, 4000, 8000];
+  let lastError;
+  for(let attempt=0; attempt<=retryDelays.length; attempt++){
+    try{ return await requestProvider(messages, c); }
+    catch(error){
+      lastError = error;
+      const retryable = error?.status === 429 || (error?.status >= 500 && error?.status <= 599);
+      if(!retryable || attempt === retryDelays.length) throw error;
+      await waitForMs(retryDelays[attempt]);
+    }
+  }
+  throw lastError;
 }
 
 function systemPrompt(persona, state){
@@ -197,31 +274,153 @@ TRẢ VỀ DUY NHẤT một JSON (không markdown):
 }
 
 async function decideLLM(text, state, persona='newbie', config){
-  const c = config || {provider:'openai',base:PROVIDERS.openai.base,model:PROVIDERS.openai.model,key:'',temp:0.3,live:false};
+  const c = {...defaultConfig(), ...(config || {})};
   const safeState = state || newState();
   const recent = Array.isArray(safeState.history) ? safeState.history.slice(-8) : [];
   const last = recent[recent.length-1];
-  const msgs=[{role:'system',content:systemPrompt(persona,safeState)}, ...recent];
-  if(!(last && last.role==='user' && last.content===text)) msgs.push({role:'user',content:text});
-  const raw=await callLLM(msgs,c); const m=raw.match(/\{[\s\S]*\}/); if(!m) throw new Error('LLM không trả JSON');
-  const j=JSON.parse(m[0]); const r={...j, source:'llm', model:c.model, raw:j.why, evidence:{}};
+  let conversation = [...recent];
+  if(!(last && last.role==='user' && last.content===text)) conversation.push({role:'user',content:text});
+  conversation = conversation.slice(-8);
+  const prompt = systemPrompt(persona,safeState);
+  const msgs=[{role:'system',content:prompt}, ...conversation];
+  const started = Date.now();
+  let raw = null;
+  let parsed = null;
+  try{
+    raw=await callLLM(msgs,c);
+    const m=raw.match(/\{[\s\S]*\}/);
+    if(!m) throw new Error('LLM không trả JSON');
+    parsed=JSON.parse(m[0]);
+  }catch(error){
+    const fallback = decide(text, safeState, persona);
+    fallback.source = 'mock';
+    fallback.model = c.model;
+    fallback.guard = 'LLM lỗi → fallback engine mock';
+    fallback.trace = {
+      mode:'mock-fallback', provider:c.provider, model:c.model, prompt_version:PROMPT_VERSION,
+      latency_ms:Date.now()-started, system_prompt:prompt, messages:conversation,
+      raw_response:raw, parsed:null, guard:null, error:String(error?.message || error),
+      rule_path:fallback.action,
+    };
+    return fallback;
+  }
+  const parsedSnapshot = JSON.parse(JSON.stringify(parsed));
+  const r={...parsed, source:'llm', model:c.model, raw:parsed.why, evidence:{}};
+  let guard = null;
   // ----- guard-rail trong code (không tin LLM 100%) -----
-  const a=analyze(text); r.example_found = !!(j.example_found || a.example);
-  const merged={}; for(const k of IDEAS){ const cur=j.coverage?.[k.id]||'miss'; merged[k.id]= safeState.confirmed[k.id]?'hit':(RANK[cur]>RANK[safeState.coverage[k.id]]?cur:safeState.coverage[k.id]); }
+  const a=analyze(text); r.example_found = !!(parsed.example_found || a.example);
+  const merged={}; for(const k of IDEAS){ const cur=parsed.coverage?.[k.id]||'miss'; merged[k.id]= safeState.confirmed[k.id]?'hit':(RANK[cur]>RANK[safeState.coverage[k.id]]?cur:safeState.coverage[k.id]); }
   const hits=IDEAS.filter(k=>merged[k.id]==='hit').length; const examples=safeState.examples+(r.example_found?1:0); const answered=safeState.answered+(safeState.pendingProbe?1:0);
-  if(a.askAnswer && r.action!=='refuse_answer'){ r.guard='engine phát hiện đòi đáp án → ép refuse_answer'; Object.assign(r, decide(text,safeState,persona), {source:'llm',model:c.model,guard:r.guard}); }
-  else if((a.paste>0.45||/\[T\d{2}-\d{3}\]/.test(text)) && r.action!=='paste_detected'){ r.guard='engine phát hiện dán tài liệu → ép paste_detected'; Object.assign(r, decide(text,safeState,persona), {source:'llm',model:c.model,guard:r.guard}); }
-  else if(r.action==='understood' && !(hits>=3&&examples>=1&&answered>=1)){ r.guard=`LLM định "hiểu" nhưng tiêu chí chưa đủ (hit=${hits}, ví dụ=${examples}, trả lời=${answered}) → chuyển thành probe`; const fb=decide(text,safeState,persona); r.action=fb.action==='understood'?'probe':fb.action; r.message=fb.message; r.target_idea=fb.target_idea; r.why=(r.why||'')+' · '+fb.why; }
-  else if(r.action==='probe' && safeState.probes>=safeState.probeLimit){ r.guard='LLM muốn hỏi thêm nhưng đã hết lượt → not_yet'; const fb={...decide(text,{...safeState,probes:safeState.probeLimit},persona)}; r.action='not_yet'; r.message=fb.message; r.review=fb.review; }
+  if(a.askAnswer && r.action!=='refuse_answer'){ guard='engine phát hiện đòi đáp án → ép refuse_answer'; Object.assign(r, decideCore(text,safeState,persona), {source:'llm',model:c.model}); }
+  else if((a.paste>0.45||/\[T\d{2}-\d{3}\]/.test(text)) && r.action!=='paste_detected'){ guard='engine phát hiện dán tài liệu → ép paste_detected'; Object.assign(r, decideCore(text,safeState,persona), {source:'llm',model:c.model}); }
+  else if(r.action==='understood' && !(hits>=3&&examples>=1&&answered>=1)){ guard=`LLM định "hiểu" nhưng tiêu chí chưa đủ (hit=${hits}, ví dụ=${examples}, trả lời=${answered}) → chuyển thành probe`; const fb=decideCore(text,safeState,persona); r.action=fb.action==='understood'?'probe':fb.action; r.message=fb.message; r.target_idea=fb.target_idea; r.why=(r.why||'')+' · '+fb.why; }
+  else if(r.action==='probe' && safeState.probes>=safeState.probeLimit){ guard='LLM muốn hỏi thêm nhưng đã hết lượt → not_yet'; const fb=decideCore(text,{...safeState,probes:safeState.probeLimit},persona); r.action='not_yet'; r.message=fb.message; r.review=fb.review; }
   if(r.action==='probe' && (!r.message || r.message.length<10)) r.message=(IDEAS.find(k=>k.id===r.target_idea)||IDEAS[1]).probe[persona];
   if(r.action==='understood' && !Array.isArray(r.summary)) r.summary=[r.message];
   if(!r.why) r.why='(LLM không trả why)'; r.review=Array.isArray(r.review)?r.review:[];
   for(const k of IDEAS) if(merged[k.id]==='hit') r.evidence[k.id]=a.evidence[k.id]||sentences(text)[0];
+  r.guard = guard;
+  r.trace = {
+    mode:'live', provider:c.provider, model:c.model, prompt_version:PROMPT_VERSION,
+    latency_ms:Date.now()-started, system_prompt:prompt, messages:conversation,
+    raw_response:raw, parsed:parsedSnapshot, guard, error:null,
+  };
   return r;
+}
+
+function testRegex(pattern, text, label, reasons, shouldMatch){
+  if(!pattern) return;
+  try{
+    const matched = new RegExp(pattern, 'iu').test(text);
+    if(matched !== shouldMatch) reasons.push(`${label}: ${shouldMatch?'không khớp':'khớp điều cấm'} /${pattern}/iu`);
+  }catch(error){ reasons.push(`${label}: regex không hợp lệ (${error.message})`); }
+}
+
+function checkExpected(expected, result, label, reasons){
+  if(!expected) return;
+  if(Array.isArray(expected.action) && !expected.action.includes(result?.action)) reasons.push(`${label}.action: mong ${expected.action.join('|')}, nhận ${result?.action || '(trống)'}`);
+  if(Array.isArray(expected.action_not) && expected.action_not.includes(result?.action)) reasons.push(`${label}.action_not: không được ${result.action}`);
+  if(Array.isArray(expected.target_idea) && !expected.target_idea.includes(result?.target_idea)) reasons.push(`${label}.target_idea: mong ${expected.target_idea.join('|')}, nhận ${result?.target_idea || '(trống)'}`);
+  if(Array.isArray(expected.confidence) && !expected.confidence.includes(result?.confidence)) reasons.push(`${label}.confidence: mong ${expected.confidence.join('|')}, nhận ${result?.confidence || '(trống)'}`);
+  if(expected.misconception === true && !result?.misconception) reasons.push(`${label}.misconception: không phát hiện`);
+  const output = `${result?.message || ''} ${(result?.summary || []).join ? result.summary.join(' ') : (result?.summary || '')}`;
+  testRegex(expected.must_match, output, `${label}.must_match`, reasons, true);
+  testRegex(expected.must_not_match, output, `${label}.must_not_match`, reasons, false);
+}
+
+function evaluateCase(c, turns){
+  const reasons = [];
+  const final = turns[turns.length-1];
+  if(!final) return {pass:false, reasons:['Không có kết quả lượt nào']};
+  checkExpected(c.expected || {}, final, 'final', reasons);
+  for(const [index, expected] of Object.entries(c.turn_expected || {})){
+    const turn = turns[Number(index)];
+    if(!turn) reasons.push(`turn_expected.${index}: thiếu lượt`);
+    else checkExpected(expected, turn, `turn ${index}`, reasons);
+  }
+  const globalOutput = `${final.message || ''} ${(final.summary || []).join ? final.summary.join(' ') : (final.summary || '')}`;
+  testRegex('bạn sai|sai rồi|không đúng rồi', globalOutput, 'global', reasons, false);
+  return {pass:reasons.length===0, reasons};
+}
+
+function groupScore(results, predicate){
+  const selected = results.filter(predicate);
+  const pass = selected.filter(r=>r.pass).length;
+  const total = selected.length;
+  return {pass, fail:total-pass, total, pct:total ? Math.round(pass/total*1000)/10 : 0};
+}
+
+async function runGoldenSet(golden, options={}){
+  const list = Array.isArray(golden) ? golden : golden?.cases;
+  if(!Array.isArray(list)) throw new Error('Golden set phải là mảng case hoặc object có cases[]');
+  const mode = options.mode || 'mock';
+  if(!['mock','live'].includes(mode)) throw new Error('Mode eval chỉ nhận mock hoặc live');
+  const config = {...defaultConfig(), ...(options.config || {})};
+  const delayMs = options.delayMs ?? 1500;
+  const totalCalls = list.reduce((sum,c)=>sum+(Array.isArray(c.turns)?c.turns.length:0),0);
+  let completedCalls = 0;
+  const results = [];
+
+  for(let caseIndex=0; caseIndex<list.length; caseIndex++){
+    const c = list[caseIndex];
+    const state = newState();
+    const persona = c.persona || 'newbie';
+    const turns = [];
+    for(let turnIndex=0; turnIndex<(c.turns || []).length; turnIndex++){
+      const input = c.turns[turnIndex];
+      const r = mode === 'live' ? await decideLLM(input,state,persona,config) : decide(input,state,persona);
+      applyResult(state,r);
+      state.history.push({role:'user',content:input},{role:'assistant',content:r.message});
+      turns.push({input, action:r.action, target_idea:r.target_idea ?? null, confidence:r.confidence ?? null,
+        misconception:r.misconception ?? null, message:r.message, summary:r.summary || [], review:r.review || [],
+        why:r.why || '', trace:r.trace});
+      completedCalls++;
+      if(mode === 'live' && delayMs > 0 && completedCalls < totalCalls) await waitForMs(delayMs);
+    }
+    const evaluation = evaluateCase(c,turns);
+    const result = {id:c.id, group:c.group, rare:!!c.rare, layer:c.layer ?? null, title:c.title,
+      source:c.source || null, persona, expected:c.expected || {}, pass_definition:c.pass_definition || '',
+      turns, final:turns[turns.length-1] || null, pass:evaluation.pass, reasons:evaluation.reasons};
+    results.push(result);
+    if(typeof options.onProgress === 'function') options.onProgress({completed:caseIndex+1,total:list.length,case:c,result});
+  }
+
+  const pass = results.filter(r=>r.pass).length;
+  const by_group = {};
+  for(const group of ['common','layer1','layer2','layer3','layer4']) by_group[group] = groupScore(results,r=>r.group===group);
+  by_group.rare = groupScore(results,r=>r.rare);
+  return {
+    meta:{run_at:new Date().toISOString(), mode, provider:mode==='live'?config.provider:'rule-based',
+      model:mode==='live'?config.model:null, prompt_version:mode==='live'?PROMPT_VERSION:'rule-v1.0',
+      golden_version:Array.isArray(golden)?'unknown':(golden.version || 'unknown'), n:results.length},
+    results,
+    summary:{pass, fail:results.length-pass, pct:results.length?Math.round(pass/results.length*1000)/10:0, by_group},
+  };
 }
 
 window.TBM = {
   SOURCES, IDEAS, MISCONCEPTIONS, SAMPLES, RANK,
   analyze, decide, newState, applyResult,
-  PROVIDERS, callLLM, systemPrompt, decideLLM
+  PROVIDERS, buildProviderRequest, parseProviderResponse, callLLM, systemPrompt, decideLLM,
+  runGoldenSet, evaluateCase, PROMPT_VERSION
 };
