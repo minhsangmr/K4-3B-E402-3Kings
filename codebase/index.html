@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>TeachBack Mentor · Prototype CP3</title>
+<title>TeachBack Mentor — Dạy lại cho Bi (CP3)</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E%F0%9F%A7%91%E2%80%8D%F0%9F%8E%93%3C/text%3E%3C/svg%3E">
 <meta name="description" content="Prototype CP3 Track D3 — học viên dạy lại 'vì sao LLM bịa' cho agent-học-trò Bi, có live AI call, trace và Eval 25 golden cases.">
 <style>
 :root{
@@ -201,6 +202,12 @@ details{border:1px solid var(--line);border-radius:10px;padding:8px 12px;backgro
 details summary{cursor:pointer;font-weight:700}
 .us{font-size:13px}
 .us .gwt{background:var(--soft);border-radius:8px;padding:8px 10px;margin:6px 0;font-family:ui-monospace,Menlo,monospace;font-size:12px;white-space:pre-wrap}
+.typing-status{display:block;margin-top:4px;color:var(--muted);font-size:11.5px}
+.tracebox{margin-top:8px;padding:8px 10px;border:1px dashed var(--line);border-radius:10px;background:var(--soft);font-size:12px}
+.tracebox pre{max-height:200px;overflow:auto;white-space:pre-wrap;word-break:break-word;font-size:11px;background:#fff;padding:6px 8px;border-radius:8px;margin:4px 0}
+.tracebox details{margin-top:4px}.tracebox summary{cursor:pointer;font-weight:700}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);opacity:0;transition:.2s;background:var(--red);color:#fff;padding:10px 14px;border-radius:10px;font-weight:700;z-index:99;pointer-events:none;max-width:90vw}
+.toast.on{opacity:1;transform:translateX(-50%)}
 </style>
 </head>
 <body>
@@ -210,7 +217,7 @@ details summary{cursor:pointer;font-weight:700}
     <span class="modebadge" id="modeBadge">MOCK · engine rule-based</span>
     <nav class="tabs">
       <button data-tab="flow">① Luồng hoạt động</button>
-      <button data-tab="mock" class="on">② Mockup giao diện</button>
+      <button data-tab="mock" class="on">② Dạy lại cho Bi</button>
       <button data-tab="api">③ Cài đặt LLM</button>
       <button data-tab="spec">④ Spec &amp; Nguyên tắc</button>
       <button data-tab="eval">⑤ Eval CP3</button>

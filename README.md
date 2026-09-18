@@ -4,13 +4,13 @@
 
 ## 👥 Thành viên nhóm & Phân công vai trò
 
-**Lớp:** 3A · **Phòng:** ____ · **Cụm:** ____ · **Track:** ____
+**Lớp:** 3B · **Phòng:** E402 · **Cụm:** ____ · **Track:** D3 — TeachBack Mentor (học bằng cách dạy)
 
 | Họ và Tên | Mã Học Viên | Vai trò chính | Phần việc đảm nhiệm trong dự án |
 |---|---|---|---|
-|Lê Minh Sang|2A202602864  |  |  |
-|Nguyễn Việt Hoàng|2A202602424  |  |  |
-|Nguyễn Tiến Phát|2A202602387|  |  |
+|Lê Minh Sang|2A202602864|Leader · Product · AI architecture|Canvas + spec (§1–§4, §6); tiêu chí "đã dạy được"; prompt persona Bi; tách engine (`engine.js`), `decideLLM` + guard-rail, trace; eval runner tab ⑤; chạy lượt 1 mock/live (`eval/run1-*.json`); nộp form|
+|Nguyễn Việt Hoàng|2A202602424|Evidence · Golden set · Quality bar|Mining `tutor_turns.csv` (3.097 lượt K4, 0,19% probing); golden set 25 case (17 từ chatlog) + User Input Grid (`eval/golden_set.json`, `eval/README.md`); manual probe; phân tích lỗi lượt 1|
+|Nguyễn Tiến Phát|2A202602387|Prototype UI · Demo · Repo|Prototype CP2 (`index.html`); UI màn "Dạy lại cho Bi" (badge LIVE/model, đếm thời gian gọi LLM, trace drawer, toast fallback); video CP3; README/demo; quản lý repo & PR|
 |  |  |  |  |
 
 > Nhóm copy nguyên file README này về repo của mình, rồi điền bảng trên. Cột **Phần việc đảm nhiệm** ghi càng cụ thể càng tốt.

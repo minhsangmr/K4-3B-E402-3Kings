@@ -254,8 +254,24 @@ function addSys(text){ const d=document.createElement('div'); d.className='msg s
 function scrollChat(){ const c=$('#mk-chat'); c.scrollTop=c.scrollHeight; }
 const esc = s => String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 const linkCodes = s => esc(s).replace(/\[(T\d{2}-\d{3})\]/g,(m,c)=>`<a href="#" onclick="flashSrc('${c}');return false"><code>[${c}]</code></a>`);
-function typingOn(){ const d=document.createElement('div'); d.className='msg bi'; d.id='typing'; d.innerHTML='<div class="av">Bi</div><div class="bub"><span class="typing"><i></i><i></i><i></i></span></div>'; $('#mk-chat').appendChild(d); scrollChat(); }
-function typingOff(){ $('#typing')?.remove(); }
+let _typingTimer=null;
+function typingOn(label){ const d=document.createElement('div'); d.className='msg bi'; d.id='typing'; d.innerHTML='<div class="av">Bi</div><div class="bub"><span class="typing"><i></i><i></i><i></i></span><small class="typing-status" id="typing-status"></small></div>'; $('#mk-chat').appendChild(d); scrollChat();
+  const t0=performance.now(); const tick=()=>{ const st=$('#typing-status'); if(st) st.textContent=label?`${label} ${((performance.now()-t0)/1000).toFixed(1)} s`:''; }; tick(); clearInterval(_typingTimer); _typingTimer=setInterval(tick,100); }
+function typingOff(){ clearInterval(_typingTimer); _typingTimer=null; $('#typing')?.remove(); }
+function toast(msg,ms=4000){ let t=$('#toast'); if(!t){ t=document.createElement('div'); t.id='toast'; t.className='toast'; document.body.appendChild(t); } t.textContent=msg; t.classList.add('on'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('on'),ms); }
+function renderTrace(t){
+  const pre=v=>`<pre>${esc(typeof v==='string'?v:JSON.stringify(v,null,2))}</pre>`;
+  const head=`<b>${esc(t.mode||'—')}</b> · ${esc(t.provider||'—')} / ${esc(t.model||'—')} · prompt <code>${esc(t.prompt_version||'—')}</code> · ${t.latency_ms!=null?esc(String(t.latency_ms))+' ms':'—'}`
+    +(t.guard?` · <span class="badge fail">guard: ${esc(t.guard)}</span>`:'')+(t.rule_path?` · rule <code>${esc(t.rule_path)}</code>`:'');
+  let body='';
+  if(t.error) body+=`<div class="fail">Lỗi LLM: ${esc(t.error)} → đã dùng engine mock</div>`;
+  if(t.system_prompt) body+=`<details><summary>System prompt (${t.system_prompt.length} ký tự)</summary>${pre(t.system_prompt)}</details>`;
+  if(t.messages) body+=`<details><summary>Messages gửi đi (${t.messages.length})</summary>${pre(t.messages)}</details>`;
+  if(t.raw_response) body+=`<details open><summary>Raw response (nguyên văn model trả về)</summary>${pre(t.raw_response)}</details>`;
+  if(t.parsed) body+=`<details><summary>Parsed JSON (trước guard-rail)</summary>${pre(t.parsed)}</details>`;
+  return `<div class="tracebox hidden"><div>${head}</div>${body}</div>`;
+}
+function toggleTrace(id){ $('#'+id+' .tracebox')?.classList.toggle('hidden'); }
 
 function addBi(r){
   const d=document.createElement('div'); d.className='msg bi';
@@ -268,6 +284,7 @@ function addBi(r){
   if(['paste_detected','refuse_answer'].includes(r.action)) meta+=`<span class="badge p3">Ngoài phạm vi ③</span>`;
   if(r.source==='llm') meta+=`<span class="badge acc">LLM · ${esc(r.model||'')}</span>`;
   if(r.guard) meta+=`<span class="badge fail" title="${esc(r.guard)}">guard-rail can thiệp</span>`;
+  if(r.source==='mock-fallback') meta+=`<span class="badge fail">LLM lỗi → engine mock</span>`;
   let body=`<div>${linkCodes(r.text||r.message||'')}</div>`;
   if(r.action==='understood') body+=`<div class="summary-edit" id="sum-${S_.turn}" contenteditable="false">${r.summary.map((s,i)=>`${i+1}. ${esc(s)}`).join('<br>')}</div><div>Đúng chưa?</div>`;
   let acts=[]; const id='m'+S_.turn+'_'+Math.random().toString(36).slice(2,6); d.id=id;
@@ -278,8 +295,10 @@ function addBi(r){
   if(r.action==='not_yet') acts.push(`<button class="btn sm" onclick="extraProbe()">Dạy tiếp (+1 lượt)</button><button class="btn sm" onclick="askTA()">Gửi câu hỏi cho TA</button>`);
   if(r.action==='no_grounding') acts.push(`<button class="btn sm" onclick="askTA()">Gửi câu hỏi cho TA</button>`);
   (r.review||[]).forEach(c=>acts.push(`<button class="btn sm ghost" onclick="flashSrc('${c}')">Xem lại [${c}]</button>`));
+  if(r.trace) acts.push(`<button class="btn sm ghost btn-trace" onclick="toggleTrace('${id}')">Chi tiết kỹ thuật</button>`);
   const why = r.why?`<div class="why hidden"><b>Vì sao Bi hỏi?</b> ${linkCodes(r.why)}${r.guard?`<br><b>Guard-rail:</b> ${esc(r.guard)}`:''}${r.raw?`<br><b>LLM why:</b> ${esc(r.raw)}`:''}</div>`:'';
-  d.innerHTML=`<div class="av">Bi</div><div class="bub">${meta?`<div class="meta">${meta}</div>`:''}${body}${acts.length?`<div class="acts">${acts.join('')}</div>`:''}${why}</div>`;
+  const tracebox = r.trace ? renderTrace(r.trace) : '';
+  d.innerHTML=`<div class="av">Bi</div><div class="bub">${meta?`<div class="meta">${meta}</div>`:''}${body}${acts.length?`<div class="acts">${acts.join('')}</div>`:''}${why}${tracebox}</div>`;
   $('#mk-chat').appendChild(d); scrollChat(); return d;
 }
 function toggleWhy(id){ $('#'+id+' .why')?.classList.toggle('hidden'); }
@@ -306,12 +325,13 @@ $('#btnTA').onclick=askTA;
 $('#btnCopyLog').onclick=()=>{ const j=JSON.stringify({session:new Date().toISOString(),persona:$('#persona').value,mode:isLive()?'live':'mock',coverage:S_.coverage,confirmed:S_.confirmed,examples:S_.examples,probes:S_.probes,answered:S_.answered,dismissed:S_.dismissed,corrections:S_.corrections,review:[...S_.review],history:S_.history,log:S_.log},null,2); navigator.clipboard?.writeText(j); $('#btnCopyLog').textContent='Đã sao chép ✓'; setTimeout(()=>$('#btnCopyLog').textContent='Sao chép JSON',1500); };
 
 async function sendText(text, opt={}){
-  if(S_.ended) return; S_.turn++; addHv(text); S_.history.push({role:'user',content:text}); $('#btnSend').disabled=true; typingOn();
+  if(S_.ended) return; S_.turn++; addHv(text); S_.history.push({role:'user',content:text}); $('#btnSend').disabled=true; typingOn(isLive()?`Đang gọi ${cfg().provider} / ${cfg().model}…`:'Bi đang nghĩ…');
   const persona=$('#persona').value;
   let r;
   if(isLive()) r = await window.TBM.decideLLM(text,S_,persona,cfg());
   else { await sleep(250); r = decide(text,S_,persona); }
   typingOff();
+  if(r.trace?.error) toast('LLM lỗi → dùng engine mock: '+String(r.trace.error).slice(0,120));
   // One state mutation path is shared by the UI and Eval.
   window.TBM.applyResult(S_,r);
   renderCoverage(); renderProbes(); addReview(r.review);
