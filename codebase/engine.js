@@ -160,7 +160,7 @@ const PROVIDERS = {
   anthropic:{name:'Anthropic (Claude)', protocol:'anthropic-messages', base:'https://api.anthropic.com/v1', model:'claude-sonnet-5', endpoint:'/messages', response_path:'content[].text', key_env:'ANTHROPIC_API_KEY', base_env:'ANTHROPIC_BASE_URL', hint:'sk-ant-…', note:'POST {base}/messages · gọi thẳng từ trình duyệt cần header anthropic-dangerous-direct-browser-access'},
   gemini:{name:'Google Gemini', protocol:'gemini-generate-content', base:'https://generativelanguage.googleapis.com/v1beta', model:'gemini-2.5-flash', endpoint:'/models/{model}:generateContent', response_path:'candidates[0].content.parts[].text', key_env:'GEMINI_API_KEY', base_env:'GEMINI_BASE_URL', hint:'AIza…', note:'POST {base}/models/{model}:generateContent · x-goog-api-key'},
   openrouter:{name:'OpenRouter', protocol:'openai-chat', base:'https://openrouter.ai/api/v1', model:'openai/gpt-4o-mini', endpoint:'/chat/completions', response_path:'choices[0].message.content', key_env:'OPENROUTER_API_KEY', base_env:'OPENROUTER_BASE_URL', hint:'sk-or-v1-…', note:'POST {base}/chat/completions · model dạng vendor/model'},
-  ninerouter:{name:'9Router', protocol:'openai-chat', base:'https://9router.com/v1', local_base:'http://localhost:20128/v1', model:'cc/claude-sonnet-5', endpoint:'/chat/completions', response_path:'choices[0].message.content', key_env:'NINE_ROUTER_API_KEY', base_env:'NINE_ROUTER_BASE_URL', hint:'API key từ dashboard 9Router', note:'OpenAI-compatible · cloud {base}; local http://localhost:20128/v1'},
+  ninerouter:{name:'9Router', protocol:'openai-chat', base:'http://localhost:20128/v1', cloud_base:'https://9router.com/v1', model:'cc/claude-sonnet-5', endpoint:'/chat/completions', response_path:'choices[0].message.content', key_env:'NINE_ROUTER_API_KEY', base_env:'NINE_ROUTER_BASE_URL', hint:'Endpoint API key từ dashboard 9Router', note:'OpenAI-compatible · local {base}; cloud https://9router.com/v1 khi tài khoản hỗ trợ'},
   custom:{name:'Custom (OpenAI-compatible)', protocol:'openai-chat', base:'http://localhost:11434/v1', model:'llama3.1', endpoint:'/chat/completions', response_path:'choices[0].message.content', key_env:'CUSTOM_LLM_API_KEY', base_env:'CUSTOM_LLM_BASE_URL', hint:'(có thể để trống với Ollama)', note:'Ollama / LM Studio / Groq / bất kỳ endpoint /chat/completions'},
 };
 
@@ -197,7 +197,7 @@ function buildProviderRequest(messages, config){
     headers['X-OpenRouter-Title'] = 'TeachBack Mentor';
   }
   return {provider:c.provider, protocol:provider.protocol, url:base+provider.endpoint, method:'POST', headers,
-    body:{model:c.model, temperature:c.temp, messages:[{role:'system',content:system}, ...rest]}};
+    body:{model:c.model, temperature:c.temp, stream:false, messages:[{role:'system',content:system}, ...rest]}};
 }
 
 function textContent(content){

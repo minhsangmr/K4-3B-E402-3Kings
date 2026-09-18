@@ -23,7 +23,7 @@ Key chỉ lưu trong `localStorage` của trình duyệt đang mở. **Không co
 | Anthropic | `https://api.anthropic.com/v1` | `POST /messages` · `{model, system, messages}` | `content[].text` |
 | Gemini | `https://generativelanguage.googleapis.com/v1beta` | `POST /models/{model}:generateContent` · `{system_instruction, contents}` | `candidates[0].content.parts[].text` |
 | OpenRouter | `https://openrouter.ai/api/v1` | OpenAI-compatible `POST /chat/completions` | `choices[0].message.content` |
-| 9Router | cloud `https://9router.com/v1`; local `http://localhost:20128/v1` | OpenAI-compatible `POST /chat/completions` | `choices[0].message.content` |
+| 9Router | local `http://localhost:20128/v1`; cloud `https://9router.com/v1` khi tài khoản hỗ trợ | OpenAI-compatible `POST /chat/completions` với `stream: false` | `choices[0].message.content` |
 
 Biến mẫu cho key, model và `base_url` của từng provider nằm trong [`.env.example`](../.env.example). Prototype tĩnh không tự đọc `.env`; hãy nhập cấu hình ở tab ③.
 
