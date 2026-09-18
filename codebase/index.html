@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>TeachBack Mentor · Prototype CP2</title>
-<meta name="description" content="Prototype Track D3 — học viên dạy lại 'vì sao LLM bịa' cho agent-học-trò Bi. Tab hoạt ảnh luồng + mockup bấm thử + cấu hình LLM.">
+<title>TeachBack Mentor · Prototype CP3</title>
+<meta name="description" content="Prototype CP3 Track D3 — học viên dạy lại 'vì sao LLM bịa' cho agent-học-trò Bi, có live AI call, trace và Eval 25 golden cases.">
 <style>
 :root{
   --bg:#f4f5fa;--card:#ffffff;--ink:#1b1f2a;--muted:#6b7280;--line:#e5e7eb;--soft:#f1f2f7;
@@ -182,9 +182,18 @@ svg#flow .token{fill:var(--accent);stroke:#fff;stroke-width:2;filter:drop-shadow
 .prov b{display:block}
 .prov small{color:var(--muted);font-size:11px;word-break:break-all}
 .out{white-space:pre-wrap;font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#0f172a;color:#e2e8f0;border-radius:9px;padding:10px;max-height:260px;overflow:auto}
+.trace{max-height:360px;overflow:auto}
 table.t{width:100%;border-collapse:collapse;font-size:12.5px}
 table.t th,table.t td{border:1px solid var(--line);padding:7px 9px;vertical-align:top;text-align:left}
 table.t th{background:var(--soft)}
+.eval-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:14px}
+.eval-toolbar select,.eval-toolbar input{padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:#fff}
+.eval-progress{height:8px;background:var(--soft);border-radius:999px;overflow:hidden;margin:0 14px 12px}
+.eval-progress i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+.eval-summary{display:grid;grid-template-columns:repeat(4,minmax(100px,1fr));gap:8px;padding:0 14px 14px}
+.eval-stat{background:var(--soft);border-radius:9px;padding:9px}.eval-stat b{display:block;font-size:18px}
+.eval-table{max-height:560px;overflow:auto}.eval-table td small{display:block;color:var(--muted);margin-top:4px}
+.pass{color:var(--green);font-weight:800}.fail{color:var(--red);font-weight:800}
 
 /* ---------- SPEC tab ---------- */
 .specgrid{display:grid;grid-template-columns:1fr;gap:16px}
@@ -197,21 +206,21 @@ details summary{cursor:pointer;font-weight:700}
 <body>
 <header>
   <div class="hwrap">
-    <div class="logo"><div class="mark">Bi</div><div>TeachBack Mentor<small>Track D3 · Học bằng cách dạy · Nhóm 3Kings · CP2 prototype</small></div></div>
+    <div class="logo"><div class="mark">Bi</div><div>TeachBack Mentor<small>Track D3 · Học bằng cách dạy · Nhóm 3Kings · CP3 prototype</small></div></div>
     <span class="modebadge" id="modeBadge">MOCK · engine rule-based</span>
     <nav class="tabs">
-      <button data-tab="flow" class="on">① Luồng hoạt động</button>
-      <button data-tab="mock">② Mockup giao diện</button>
+      <button data-tab="flow">① Luồng hoạt động</button>
+      <button data-tab="mock" class="on">② Mockup giao diện</button>
       <button data-tab="api">③ Cài đặt LLM</button>
       <button data-tab="spec">④ Spec &amp; Nguyên tắc</button>
-      <button data-tab="eval">⑤ Eval</button>
+      <button data-tab="eval">⑤ Eval CP3</button>
     </nav>
   </div>
 </header>
 
 <main>
 <!-- ================= TAB 1: FLOW ================= -->
-<section class="tab on" id="tab-flow">
+<section class="tab" id="tab-flow">
   <h2>Luồng hoạt động — hoạt ảnh từng bước</h2>
   <p class="lead">Chọn một kịch bản rồi bấm <b>Chạy</b>. Hạt sáng đi qua các bước; màn hình bên phải mô phỏng đúng cái học viên nhìn thấy tại mỗi bước. Nút <b>⚙ QUYẾT ĐỊNH AI</b> là điểm gọi mô hình; từ đó rẽ 4 đường theo <code>spec.md §6</code>.</p>
   <div class="flowgrid">
@@ -266,7 +275,7 @@ details summary{cursor:pointer;font-weight:700}
 </section>
 
 <!-- ================= TAB 2: MOCKUP ================= -->
-<section class="tab" id="tab-mock">
+<section class="tab on" id="tab-mock">
   <div class="card">
     <div class="appbar">
       <div class="crumb">VLearn › AI20K › Bài 4 · LLM cơ bản › <b>Đoạn: Vì sao LLM bịa (hallucination)</b></div>
@@ -310,10 +319,15 @@ details summary{cursor:pointer;font-weight:700}
             <option value="happy">Giải thích đúng (happy)</option>
             <option value="happy2">↳ bổ sung sau câu hỏi K3</option>
             <option value="lowconf">Đúng nhưng diễn đạt khác bài (②)</option>
+            <option value="lowconf2">↳ làm rõ lại bằng từ "xác suất"</option>
             <option value="wrongconf">Sai nhưng tự tin (④)</option>
+            <option value="wrongconf2">↳ tự sửa misconception</option>
+            <option value="wrongconf3">↳ bổ sung K2 sau phản ví dụ</option>
             <option value="noground">Ngoài căn cứ (①)</option>
             <option value="paste">Dán nguyên tài liệu (③)</option>
+            <option value="paste2">↳ nói lại bằng lời mình</option>
             <option value="askanswer">Đòi đáp án (③)</option>
+            <option value="injection">Prompt injection / đảo vai</option>
           </select>
         </div>
         <textarea id="mk-input" placeholder="Giải thích cho Bi bằng lời của bạn: vì sao LLM bịa? (không cần giống slide — nói theo cách bạn hiểu)"></textarea>
@@ -363,16 +377,22 @@ details summary{cursor:pointer;font-weight:700}
         <button class="btn" id="btnClearCfg">Xoá key · về Mock</button>
       </div>
       <div class="out" id="cfgOut">Chưa kiểm tra.</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">
+        <b style="font-size:12px">Trace kỹ thuật:</b><span class="badge" id="traceCount">0 lượt</span>
+        <span class="grow"></span>
+        <button class="btn sm" id="btnDownloadTrace">Tải trace JSON</button>
+        <button class="btn sm" id="btnClearTrace">Xoá trace cục bộ</button>
+      </div>
+      <div class="out trace" id="aiTrace" style="margin-top:8px">Chưa có lời gọi LLM thật. Trace chỉ lưu trong localStorage của trình duyệt này và không chứa API key.</div>
     </div>
     <div class="card panel">
       <h3>Endpoint mỗi provider</h3>
       <table class="t">
-        <tr><th>Provider</th><th>Base URL mặc định</th><th>Request → response text</th></tr>
-        <tr><td>OpenAI</td><td><code>https://api.openai.com/v1</code></td><td><code>POST /chat/completions</code> · <code>{model,messages}</code> → <code>choices[0].message.content</code></td></tr>
-        <tr><td>Anthropic</td><td><code>https://api.anthropic.com/v1</code></td><td><code>POST /messages</code> · <code>{system,messages}</code> → <code>content[].text</code></td></tr>
-        <tr><td>Gemini</td><td><code>https://generativelanguage.googleapis.com/v1beta</code></td><td><code>POST /models/{model}:generateContent</code> · <code>{system_instruction,contents}</code> → <code>candidates[0].content.parts[].text</code></td></tr>
-        <tr><td>OpenRouter</td><td><code>https://openrouter.ai/api/v1</code></td><td><code>POST /chat/completions</code> · OpenAI-compatible · Bearer</td></tr>
-        <tr><td>9Router</td><td><code>http://localhost:20128/v1</code> (local)<br><code>https://9router.com/v1</code> (cloud nếu tài khoản hỗ trợ)</td><td><code>POST /chat/completions</code> · OpenAI-compatible · Bearer</td></tr>
+        <tr><th>Provider</th><th>Base URL mặc định</th><th>Endpoint / auth</th></tr>
+        <tr><td>OpenAI</td><td><code>https://api.openai.com/v1</code></td><td><code>POST /chat/completions</code> · <code>Authorization: Bearer</code></td></tr>
+        <tr><td>Anthropic</td><td><code>https://api.anthropic.com/v1</code></td><td><code>POST /messages</code> · <code>x-api-key</code> + <code>anthropic-version</code> + <code>anthropic-dangerous-direct-browser-access</code></td></tr>
+        <tr><td>Gemini</td><td><code>https://generativelanguage.googleapis.com/v1beta</code></td><td><code>POST /models/{model}:generateContent?key=</code></td></tr>
+        <tr><td>OpenRouter</td><td><code>https://openrouter.ai/api/v1</code></td><td><code>POST /chat/completions</code> · Bearer · <code>HTTP-Referer</code></td></tr>
         <tr><td>Custom (OpenAI-compatible)</td><td>vd. <code>http://localhost:11434/v1</code> (Ollama), Groq, LM Studio</td><td><code>POST /chat/completions</code></td></tr>
       </table>
       <h3 style="margin-top:14px">Prompt gửi đi (system)</h3>
@@ -416,32 +436,27 @@ details summary{cursor:pointer;font-weight:700}
     </div>
   </div>
 </section>
-
-<!-- ================= TAB 5: EVAL ================= -->
+<!-- ================= TAB ⑤: EVAL CP3 ================= -->
 <section class="tab" id="tab-eval">
-  <h2>Eval runner — Golden set</h2>
-  <p class="lead">Khung tab ⑤ cho CP3: S2 sẽ nối runner thật vào các id cố định dưới đây.</p>
-  <div class="card panel">
-    <div class="controls">
+  <h2>Eval CP3 — golden set 25 case</h2>
+  <p class="lead">Chạy cùng một bộ test ở MOCK hoặc LIVE. Mỗi case giữ input, output, trace và lý do pass/fail để nhóm đọc lỗi thay vì chỉ nhìn một con số.</p>
+  <div class="card">
+    <div class="eval-toolbar">
       <input id="ev-file" type="file" accept=".json,application/json">
-      <button class="btn" id="ev-load-default">Nạp eval/golden_set.json</button>
-      <select id="ev-mode">
-        <option value="mock">mock</option>
-        <option value="live">live</option>
-      </select>
-      <button class="btn primary" id="ev-run">Chạy</button>
-      <button class="btn" id="ev-export-json">Export JSON</button>
-      <button class="btn" id="ev-export-md">Export MD</button>
+      <button class="btn" id="ev-load-default">Nạp golden_set.json</button>
+      <label>Chế độ <select id="ev-mode"><option value="mock">MOCK · rule engine</option><option value="live">LIVE · LLM thật</option></select></label>
+      <button class="btn primary" id="ev-run">Chạy Eval</button>
+      <button class="btn" id="ev-export-json">Xuất JSON</button>
+      <button class="btn" id="ev-export-md">Xuất Markdown</button>
     </div>
-    <div id="ev-progress" class="notice">Chưa nạp golden set.</div>
-    <div id="ev-summary" style="margin:12px 0"></div>
-    <table class="t" id="ev-table">
-      <thead><tr><th>ID</th><th>Group</th><th>Expected</th><th>Got</th><th>Kết quả</th></tr></thead>
-      <tbody><tr><td colspan="5" style="color:var(--muted)">Runner sẽ hiển thị kết quả ở đây.</td></tr></tbody>
-    </table>
+    <div class="eval-progress"><i id="ev-progress"></i></div>
+    <div id="ev-summary" class="eval-summary"><div class="eval-stat">Trạng thái<b>Chưa chạy</b></div></div>
+    <div class="eval-table"><table class="t"><thead><tr><th>Case</th><th>Taxonomy / input</th><th>Kết quả</th><th>Trace / lỗi</th></tr></thead><tbody id="ev-table"><tr><td colspan="4">Nạp golden set rồi bấm Chạy Eval.</td></tr></tbody></table></div>
   </div>
 </section>
 </main>
+
+<script src="ai-decision.js"></script>
 <script src="engine.js"></script>
 <script src="app.js"></script>
 <script src="eval-tab.js"></script>
