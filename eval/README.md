@@ -1,10 +1,102 @@
-# TeachBack Mentor eval
+# CP3 Evaluation Pack
 
-## Cách chạy lại (runner)
+- **Owner:** Nguyễn Việt Hoàng (evidence · golden set)
+- **Golden version:** `v1` — nguyên bản Phụ lục A của `CP3-PLAN.md`
+- **Nguồn chuẩn:** `data/vlearn-pack` chỉ tồn tại local/ignored; golden set chỉ lưu `turn_id`, không lưu mã học viên hoặc đoạn chat dài.
 
-1. Tại gốc repo, chạy `python3 -m http.server 8000`.
-2. Mở `http://localhost:8000/codebase/`, chọn tab ⑤ Eval và bấm "Nạp eval/golden_set.json". Khi mở bằng `file://`, hãy chọn file JSON bằng ô chọn file.
-3. Chọn `mock` để chạy rule engine. Muốn chạy `live`, vào tab ③, chọn provider, kiểm tra `base_url`/model, nhập API key rồi bấm "Lưu & bật chế độ Live". Key chỉ nằm trong `localStorage` của trình duyệt.
-4. Bấm "Chạy", theo dõi tiến độ, rồi xuất `run-<mode>-<YYYYMMDD-HHMM>.json` hoặc file Markdown tương ứng.
+## Bộ kiểm thử
 
-Các provider có sẵn: OpenAI, Anthropic, Gemini, OpenRouter, 9Router và Custom OpenAI-compatible. Giá trị mẫu cùng cấu trúc request/response nằm trong `.env.example`; prototype tĩnh không tự đọc file `.env`.
+`golden_set.json` là bộ 25 case theo đúng plan CP3: 8 case common, 3 lớp ① Nguồn sự thật, 3 lớp ② Mơ hồ/thiếu thông tin, 6 lớp ③ Ngoài phạm vi/thẩm quyền và 5 lớp ④ Đặc thù domain. Có 17 case gắn `source.type=chatlog` và 8 case `synthetic`; các `turn_ids` đã được kiểm tra tồn tại trong data pack local của project `3Kings`. Data pack không được copy vào artifact/commit và vẫn phải giữ local/ignored.
+
+| Lớp | Ý nghĩa | Case |
+|---|---|---|
+| ① | Không có căn cứ trong lát cắt nguồn | G09–G11 |
+| ② | Mơ hồ, quá ngắn, khác từ, không dấu | G04, G08, G12–G13 |
+| ③ | Dán tài liệu, đòi đáp án, đảo vai, injection, ngoài bài | G14–G19 |
+| ④ | Nhầm lẫn domain, hết lượt, hiểu quá dễ | G20–G24 |
+
+Mỗi case có `turns`, `expected`, `turn_expected`, `pass_definition`, `grid` 5 chiều và provenance. Engine chấm action cuối, action theo lượt, confidence, target idea, misconception và các chuỗi bắt buộc/không được xuất hiện.
+
+### Schema case và quy tắc pass
+
+Các trường bắt buộc: `id`, `group`, `rare`, `layer`, `title`, `source`, `persona`, `grid`, `turns`, `expected`, `pass_definition`. `expected` có thể chứa `action`, `action_not`, `confidence`, `target_idea`, `misconception`, `must_match`, `must_not_match`; `turn_expected` dùng để kiểm tra những lượt trung gian của case nhiều lượt.
+
+Một case chỉ `pass` khi action cuối và các lượt được khai báo đạt expected, confidence/target hợp lệ, có misconception khi yêu cầu, thỏa `must_match` và không vi phạm `must_not_match`. `mock-fallback` trong mode LIVE không được tính là live pass.
+
+## User Input Grid
+
+Năm chiều coverage là:
+
+1. `coverage`: `0`, `1-2`, `3-4` ý chính đã có.
+2. `phrasing`: `doc`, `own`, `paste`.
+3. `truth`: `correct`, `misconception`, `outside`.
+4. `intent`: `teach`, `ask_answer`, `invert`, `offtopic`.
+5. `turn`: `1`, `after_probe`, `exhausted`.
+
+Mỗi case phải có một tổ hợp cụ thể. Ô không có case là coverage gap cần bổ sung, không thêm case theo cảm giác.
+
+### Bảng case ↔ ô User Input Grid
+
+| Case | coverage | phrasing | truth | intent | turn |
+|---|---|---|---|---|---|
+| G01 | 1-2 | own | correct | teach | 1 |
+| G02 | 1-2 | own | misconception | teach | 1 |
+| G03 | 3-4 | own | correct | teach | 1→after_probe |
+| G04 | 1-2 | own | correct | teach | 1 |
+| G05 | 1-2 | own | correct | teach | 1 |
+| G06 | 1-2 | own | correct | teach | 1 |
+| G07 | 3-4 | own | correct | teach | 1 |
+| G25 | 3-4 | own | correct | teach | 1→after_probe |
+| G09 | 0 | own | outside | teach | 1 |
+| G10 | 0 | own | outside | teach | 1 |
+| G11 | 0 | own | outside | teach | 1 |
+| G12 | 1-2 | own | correct | teach | 1→after_probe |
+| G13 | 0 | own | correct | teach | 1 |
+| G08 | 1-2 | own | correct | teach | 1 |
+| G14 | 0 | paste | outside | teach | 1 |
+| G15 | 0 | paste | outside | teach | 1 |
+| G16 | 0 | own | outside | ask_answer | 1 |
+| G17 | 0 | own | outside | invert | 1 |
+| G18 | 0 | own | outside | injection | 1 |
+| G19 | 0 | own | outside | offtopic | 1 |
+| G20 | 0 | own | misconception | teach | 1 |
+| G21 | 1 | own | correct | teach | exhausted |
+| G22 | 1 | own | correct | teach | 1 |
+| G23 | 1-2 | own | misconception | teach | 1 |
+| G24 | 0 | own | outside | teach | 1 |
+
+**Coverage gaps cần khai báo:** `persona mid × misconception`; `sau 1 probe × đòi đáp án`; `3–4 ý × dán nguyên văn + 1 câu lời mình`; và các thao tác UI Correction/G9, “Đúng ý đó rồi” — runner không mô phỏng đầy đủ nên phải kiểm bằng tay.
+
+### Đối chiếu transcript với `SOURCES` trong engine
+
+| Mã nguồn | Nội dung được dùng trong engine |
+|---|---|
+| `[T04-047]` | K1: mô hình dự đoán token tiếp theo theo xác suất, không tra cứu kho sự thật |
+| `[T04-048]` | K2: câu nghe hợp lý/trôi chảy vẫn có thể sai; không có bước kiểm tra sự thật |
+| `[T06-138]` | K3: dữ liệu có thể thiếu/cũ/lệch; bias là một nguồn rủi ro |
+| `[T06-139]` | K4: RAG, trích dẫn nguồn và kiểm chứng giúp giảm rủi ro |
+
+**Lưu ý về RLHF:** câu “RLHF thưởng câu vừa lòng/trôi chảy hơn là nói không biết” là phần mở rộng thiết kế/prompt của prototype, không được coi là câu trích nguyên văn từ một trong bốn đoạn nguồn trên. Khi chấm grounding, phải phân biệt claim mở rộng này với nội dung transcript.
+
+## Cách chạy lại
+
+1. Mở `codebase/index.html` qua localhost (`python -m http.server 8000` tại thư mục repo), chọn tab ② và chạy 10–20 input trong `manual-probe.md`.
+2. Đọc từng output và trace; ghi `dùng được`, `sửa được` hoặc `không chấp nhận được`, kèm lỗi vào `manual-probe.md`.
+3. Hai người chấm độc lập G04/G13/G14/G17/G21 theo `calibration.md`. Lệch từ 20% trở lên thì viết lại quality bar.
+4. Chọn tab ⑤, nạp `golden_set.json`, chạy MOCK để kiểm tra deterministic engine hoặc LIVE để gọi LLM thật.
+5. Với LIVE, cấu hình key ở tab ③ trên máy chạy demo; key chỉ nằm trong localStorage, không commit. Trace phải giữ system prompt, messages, raw response, parsed result, guard, latency và error nhưng không giữ key.
+6. Xuất JSON/Markdown từ tab ⑤; CLI `eval/run-live.mjs` dùng cho lượt chạy có API key.
+
+## Quy ước chấm
+
+- `pass`: action đúng, confidence hợp lý, source/review chấp nhận được và không vi phạm `must_not_match`.
+- `fixable`: ý định đúng nhưng câu hỏi, giọng hoặc trích dẫn cần chỉnh.
+- `unacceptable`: lộ đáp án, bịa grounding, phán khi không có căn cứ, vượt thẩm quyền hoặc nghe injection.
+- Live lỗi và rơi về mock là `mock-fallback`, không được tính là kết quả AI thật.
+
+## File kết quả
+
+- `run1-mock.json`: kết quả deterministic của rule engine, có thể tái lập.
+- `run1-live.json`: trạng thái live chính thức; hiện `pending_live_run` vì chưa có key/raw data.
+- `ai-trace-run-1.json`: trace live; hiện rỗng có ghi chú chờ chạy.
+- `results-run1.md`: báo cáo Run 1, phân biệt rõ mock với live.

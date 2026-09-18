@@ -1,3 +1,6 @@
+/* TeachBack Mentor · CP3 application/UI layer */
+const {SOURCES,IDEAS,RANK,SAMPLES,MISCONCEPTIONS,pasteRatio,analyze,decide}=window.TBM;
+const PROMPT_VERSION=window.TBM.PROMPT_VERSION;
 /* =====================================================================
    1. TABS
    ===================================================================== */
@@ -9,6 +12,7 @@ function showTab(name){
 }
 $$('nav.tabs button').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
 if(location.hash && $('#tab-'+location.hash.slice(1))) showTab(location.hash.slice(1));
+
 
 /* =====================================================================
    3. TAB ① — HOẠT ẢNH LUỒNG
@@ -214,12 +218,13 @@ $('#btnReset').onclick=resetFlow;
 $('#scenario').onchange=resetFlow;
 resetFlow();
 
+
 /* =====================================================================
    4. TAB ② — MOCKUP TƯƠNG TÁC
    ===================================================================== */
 let S_ = null;
 function newSession(){
-  S_ = {...TBM.newState(), dismissed:0, corrections:0, log:[], review:new Set(), ended:false, started:null, timerId:null, lastAction:null, turn:0};
+  S_ = window.TBM.newState();
   $('#mk-chat').innerHTML=''; $('#mk-log').innerHTML=''; $('#mk-review').innerHTML='<li style="color:var(--muted)">Chưa có — Bi sẽ trỏ đoạn khi phát hiện chỗ hổng.</li>';
   $('#mk-summary').innerHTML='<span style="color:var(--muted)">Phiên đang diễn ra. Bấm "Kết thúc phiên" để xem tóm tắt (không có điểm số).</span>';
   $('#mk-confirm').innerHTML=''; $('#mk-input').value=''; $('#mk-input').disabled=false; $('#btnSend').disabled=false;
@@ -302,16 +307,16 @@ $('#btnCopyLog').onclick=()=>{ const j=JSON.stringify({session:new Date().toISOS
 
 async function sendText(text, opt={}){
   if(S_.ended) return; S_.turn++; addHv(text); S_.history.push({role:'user',content:text}); $('#btnSend').disabled=true; typingOn();
-  const persona=$('#persona').value; let r, err=null;
-  if(isLive()){ try{ r = await decideLLM(text, S_, persona, cfg()); } catch(e){ err=e; } }
-  if(!r){ await sleep(500+Math.random()*500); r = decide(text, S_, persona); r.source='mock'; if(err){ r.guard='LLM lỗi ('+String(err.message||err).slice(0,80)+') → fallback engine mock'; } }
+  const persona=$('#persona').value;
+  let r;
+  if(isLive()) r = await window.TBM.decideLLM(text,S_,persona,cfg());
+  else { await sleep(250); r = decide(text,S_,persona); }
   typingOff();
-  // --- cập nhật state từ kết quả (guard-rail luôn chạy trong code, không phụ thuộc LLM) ---
-  TBM.applyResult(S_, r);
-  if(r.misconception) logAdd('misconception', r.misconception);
-  S_.lastAction=r.action; renderCoverage(); renderProbes(); addReview(r.review);
-  logAdd(r.action, `conf=${r.confidence} · cov=${IDEAS.map(k=>k.id[1]+':'+(S_.confirmed[k.id]?'hit':S_.coverage[k.id])[0]).join(' ')} · ex=${S_.examples} · probes=${S_.probes}/${S_.probeLimit}${r.source==='llm'?' · llm':''}${r.guard?' · GUARD':''}`, {trace:r.trace || null});
-  S_.history.push({role:'assistant',content:r.message + (r.summary?'\n'+r.summary.join('\n'):'')});
+  // One state mutation path is shared by the UI and Eval.
+  window.TBM.applyResult(S_,r);
+  renderCoverage(); renderProbes(); addReview(r.review);
+  logAdd(r.action, `conf=${r.confidence} · cov=${IDEAS.map(k=>k.id[1]+':'+(S_.confirmed[k.id]?'hit':S_.coverage[k.id])[0]).join(' ')} · ex=${S_.examples} · probes=${S_.probes}/${S_.probeLimit}${r.source==='llm'?' · llm':''}${r.guard?' · GUARD':''}`);
+  S_.history.push({role:'assistant',content:r.message+(r.summary?'\n'+r.summary.join('\n'):'')});
   addBi(r); $('#btnSend').disabled=false; $('#mk-input').focus();
   return r;
 }
@@ -325,9 +330,11 @@ function endSession(){ if(S_.ended) return; S_.ended=true; clearInterval(S_.time
   addReview(missing.map(k=>k.src)); logAdd('session_end', `verdict=${ok?'understood':'not_yet'}`); addSys('Phiên đã kết thúc. Bấm "Phiên mới" để dạy lại từ đầu.'); }
 renderSources();
 
+
 /* =====================================================================
-   5. TAB ③ — LLM PROVIDERS (UI cấu hình)
+   5. TAB ③ — LLM PROVIDERS
    ===================================================================== */
+const PROVIDERS = window.TBM.PROVIDERS;
 function cfg(){ try{ return JSON.parse(localStorage.getItem('tbm_llm_cfg')||'null')||{provider:'openai',base:PROVIDERS.openai.base,model:PROVIDERS.openai.model,key:'',temp:0.3,live:false}; }catch{ return {provider:'openai',base:PROVIDERS.openai.base,model:PROVIDERS.openai.model,key:'',temp:0.3,live:false}; } }
 function isLive(){ const c=cfg(); return !!(c.live && (c.key || c.provider==='custom')); }
 function saveCfg(c){ localStorage.setItem('tbm_llm_cfg', JSON.stringify(c)); renderMode(); }
@@ -339,7 +346,32 @@ function readCfgForm(){ const provider=$('#providers .prov.on')?.dataset.p||'ope
 $('#btnSaveCfg').onclick=()=>{ const c=readCfgForm(); if(!c.key && c.provider!=='custom'){ $('#cfgOut').textContent='Thiếu API key.'; return; } saveCfg({...c,live:true}); $('#cfgOut').textContent='Đã lưu. Chế độ LIVE bật — tab ② sẽ gọi '+c.provider+' / '+c.model+'.'; };
 $('#btnClearCfg').onclick=()=>{ localStorage.removeItem('tbm_llm_cfg'); renderProviders(); renderMode(); $('#cfgOut').textContent='Đã xoá key. Về chế độ MOCK.'; };
 $('#btnTestCfg').onclick=async()=>{ const c=readCfgForm(); $('#cfgOut').textContent='Đang gọi '+c.provider+'…'; try{ const t0=Date.now(); const txt=await callLLM([{role:'system',content:'Bạn là trợ lý kiểm tra kết nối.'},{role:'user',content:'Trả lời đúng 3 từ: "Kết nối OK".'}], c); $('#cfgOut').textContent='OK ('+(Date.now()-t0)+' ms)\n'+txt; }catch(e){ $('#cfgOut').textContent='LỖI: '+(e.message||e)+'\n\nGợi ý: kiểm tra base URL, model id, key; với Ollama cần OLLAMA_ORIGINS=* để cho phép CORS.'; } };
-renderProviders(); renderMode(); $('#promptPreview').textContent=systemPrompt('newbie',null);
+
+
+async function callLLM(messages,c){ const result=await window.TBM.callLLM(messages,c||cfg()); renderAITrace(); return result.text; }
+function renderAITrace(){
+  const entries=window.TeachBackDecision?.getTrace?.()||[];
+  const count=$('#traceCount'); if(count) count.textContent=entries.length+' lượt';
+  const out=$('#aiTrace'); if(!out) return;
+  if(!entries.length){ out.textContent='Chưa có lời gọi LLM thật. Trace chỉ lưu trong localStorage của trình duyệt này và không chứa API key.'; return; }
+  out.textContent=entries.map(e=>[
+    `[${e.timestamp}] ${e.trace_id} · ${e.provider}/${e.model} · HTTP ${e.response_status??'ERR'} · ${e.elapsed_ms??'—'} ms`,
+    `ENDPOINT: ${e.endpoint}`,
+    `PROMPT/BODY:\n${JSON.stringify(e.request,null,2)}`,
+    `RAW RESPONSE:\n${e.response_raw||'—'}`,
+    e.error?`ERROR: ${e.error}`:''
+  ].filter(Boolean).join('\n')).join('\n\n'+'─'.repeat(72)+'\n\n');
+}
+function downloadAITrace(){
+  const blob=new Blob([JSON.stringify(window.TeachBackDecision?.getTrace?.()||[],null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='ai-trace.json'; a.click(); URL.revokeObjectURL(url);
+}
+window.addEventListener('tbm-ai-trace',renderAITrace);
+window.addEventListener('tbm-ai-trace-cleared',renderAITrace);
+$('#btnDownloadTrace').onclick=downloadAITrace;
+$('#btnClearTrace').onclick=()=>{ if(confirm('Xoá trace cục bộ của các lượt gọi LLM?')) window.TeachBackDecision.clearTrace(); };
+renderProviders(); renderMode(); renderAITrace(); $('#promptPreview').textContent=window.TBM.systemPrompt('newbie',null); window.getTBMConfig=cfg;
+
 
 /* =====================================================================
    6. TAB ④ — SPEC: tái hiện nguyên tắc & user stories
