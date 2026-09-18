@@ -1,21 +1,25 @@
 #!/usr/bin/env node
-/* CP3 Run 1 live runner. API key is read only from the environment. */
+/* Runner Node ĐỘC LẬP (không phải module quyết định của sản phẩm).
+ * - Dùng system prompt rút gọn, KHÔNG có 4 đoạn nguồn và KHÔNG có guard-rail trong code
+ *   -> kết quả không so sánh được với runner tab ⑤ (codebase/engine.js) đã sinh ra eval/run1-*.json.
+ * - Ghi ra run-live-node.json / ai-trace-run-live-node.json; KHÔNG ghi đè run1-live.json (số run 1 chính thức).
+ * - API key chỉ đọc từ biến môi trường TBM_API_KEY. */
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here=path.dirname(fileURLToPath(import.meta.url));
 const golden=JSON.parse(await fs.readFile(path.join(here,'golden_set.json'),'utf8'));
-const resultPath=path.join(here,'run1-live.json');
-const tracePath=path.join(here,'ai-trace-run-1.json');
+const resultPath=path.join(here,'run-live-node.json');
+const tracePath=path.join(here,'ai-trace-run-live-node.json');
 const apiKey=process.env.TBM_API_KEY||'';
 const base=(process.env.TBM_BASE_URL||'https://api.openai.com/v1').replace(/\/$/,'');
 const model=process.env.TBM_MODEL||'gpt-4o-mini';
 const temperature=Number(process.env.TBM_TEMPERATURE||'0.2');
 if (!apiKey) {
-  const pending={status:'pending_live_run',reason:'Thiếu TBM_API_KEY; không ghi số liệu giả.',meta:{mode:'live',prompt_version:'bi-v1.0',total:golden.cases.length},summary:{total:golden.cases.length,passed:null,failed:null,accuracy:null},results:[],trace_file:'ai-trace-run-1.json'};
+  const pending={status:'pending_live_run',reason:'Thiếu TBM_API_KEY; không ghi số liệu giả.',meta:{mode:'live',prompt_version:'bi-v1.0',total:golden.cases.length},summary:{total:golden.cases.length,passed:null,failed:null,accuracy:null},results:[],trace_file:'ai-trace-run-live-node.json'};
   await fs.writeFile(resultPath,JSON.stringify(pending,null,2)+'\n');
-  console.error('Thiếu TBM_API_KEY. Đã giữ run1-live.json ở trạng thái pending_live_run.');
+  console.error('Thiếu TBM_API_KEY. Đã ghi run-live-node.json ở trạng thái pending_live_run.');
   process.exit(2);
 }
 
@@ -28,6 +32,6 @@ async function request(messages){let last;for(let attempt=0;attempt<=3;attempt++
 const results=[],traces=[];
 for(let i=0;i<golden.cases.length;i++){const item=golden.cases[i],outputs=[],messages=[{role:'system',content:system}];let error=null;for(const input of item.turns){messages.push({role:'user',content:input});try{const answer=await request(messages);outputs.push(answer.parsed);traces.push({...answer.trace,case_id:item.id,turn:outputs.length-1});messages.push({role:'assistant',content:JSON.stringify(answer.parsed)});}catch(e){error=String(e.message||e);traces.push({...e.trace,case_id:item.id,error});break;}}const evaluation=error?{pass:false,failures:[error]}:score(item,outputs);results.push({id:item.id,title:item.title,turns:item.turns,outputs,evaluation});console.log(`${i+1}/${golden.cases.length} ${item.id} ${evaluation.pass?'PASS':'FAIL'}`);}
 const passed=results.filter(x=>x.evaluation.pass).length;
-await fs.writeFile(resultPath,JSON.stringify({status:'completed',meta:{mode:'live',prompt_version:'bi-v1.0',provider:'openai-compatible',model,total:results.length},summary:{total:results.length,passed,failed:results.length-passed,accuracy:passed/results.length},results,trace_file:'ai-trace-run-1.json'},null,2)+'\n');
+await fs.writeFile(resultPath,JSON.stringify({status:'completed',meta:{mode:'live',prompt_version:'bi-v1.0',provider:'openai-compatible',model,total:results.length},summary:{total:results.length,passed,failed:results.length-passed,accuracy:passed/results.length},results,trace_file:'ai-trace-run-live-node.json'},null,2)+'\n');
 await fs.writeFile(tracePath,JSON.stringify({status:'completed',entries:traces},null,2)+'\n');
 console.log(`Pass rate: ${(passed/results.length*100).toFixed(1)}%`);

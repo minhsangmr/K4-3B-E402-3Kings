@@ -85,7 +85,7 @@ Mỗi case phải có một tổ hợp cụ thể. Ô không có case là covera
 3. Hai người chấm độc lập G04/G13/G14/G17/G21 theo `calibration.md`. Lệch từ 20% trở lên thì viết lại quality bar.
 4. Chọn tab ⑤, nạp `golden_set.json`, chạy MOCK để kiểm tra deterministic engine hoặc LIVE để gọi LLM thật.
 5. Với LIVE, cấu hình key ở tab ③ trên máy chạy demo; key chỉ nằm trong localStorage, không commit. Trace phải giữ system prompt, messages, raw response, parsed result, guard, latency và error nhưng không giữ key.
-6. Xuất JSON/Markdown từ tab ⑤; CLI `eval/run-live.mjs` dùng cho lượt chạy có API key.
+6. Xuất JSON/Markdown từ tab ⑤ — đây là runner **chính thức** (dùng đúng `systemPrompt()` + guard-rail của sản phẩm). CLI `eval/run-live.mjs` là runner Node độc lập với prompt rút gọn, không guard-rail, ghi ra `run-live-node.json`; chỉ dùng để thử nhanh, **không** dùng làm số nộp.
 
 ## Quy ước chấm
 
@@ -96,7 +96,19 @@ Mỗi case phải có một tổ hợp cụ thể. Ô không có case là covera
 
 ## File kết quả
 
-- `run1-mock.json`: kết quả deterministic của rule engine, có thể tái lập.
-- `run1-live.json`: trạng thái live chính thức; hiện `pending_live_run` vì chưa có key/raw data.
-- `ai-trace-run-1.json`: trace live; hiện rỗng có ghi chú chờ chạy.
-- `results-run1.md`: báo cáo Run 1, phân biệt rõ mock với live.
+- `run1-mock.json`: lượt 1 mock — engine rule-based `rule-v1.0` tại commit `c46ee56` (18/9 11:58). **20/25**. Tái lập được với engine ở commit đó.
+- `run1-live.json`: lượt 1 live — provider `ninerouter`, model `my-combo-mixture`, prompt `bi-v1.0` (18/9 12:29). **16/25**. Mỗi lượt có `system_prompt`, `messages`, `raw_response`, `parsed`, `latency_ms`, `guard`, `error`.
+- `results-run1.md`: báo cáo lượt 1 — bảng % theo lớp, bảng 25 case, phân tích nguyên nhân theo nhóm lỗi, mock vs live, đề xuất quality bar CP4.
+- `run-live-node.json` / `ai-trace-run-live-node.json` (nếu có): output của `run-live.mjs`, không phải số chính thức.
+
+## Lưu ý phiên bản engine (đọc trước khi chạy lại)
+
+| Mốc | Commit | Engine | Ghi chú |
+|---|---|---|---|
+| Lượt 1 (số chính thức trong `run1-*.json`) | PR #2–#3 của Sang: `cc97bd1` → `b70e2dc` → `c46ee56` (11:58–12:31) | `rule-v1.0` gốc | 5 case mock thất bại: G08 G13 G14 G17 G21 — phân tích ở `results-run1.md` §3 |
+| `main` hiện tại | từ `08463d2` (14:38) | `rule-v1.0` **+ bản vá sau lượt 1** (`analyzeCP3`, `decideBaseCP3` trong `codebase/engine.js`) | Chạy lại mock trên `main` cho 25/25, **khác** file lượt 1. Bản vá khớp câu chữ 5 case fail; biến thể sát nghĩa vẫn fail (`results-run1.md` §6) |
+
+Quy ước từ đây:
+1. **Không sửa** `run1-*.json` và không chạy đè lên tên file đó. Muốn tái lập lượt 1: lấy nguyên codebase tại commit đó ra thư mục riêng — `git worktree add ../tbm-run1 c46ee56` — mở `../tbm-run1/codebase/index.html` qua localhost, tab ⑤ mock (lúc đó `engine.js` còn chứa cả phần gọi LLM, chưa có `ai-decision.js`).
+2. Mọi thay đổi engine/prompt sau lượt 1 phải **đổi nhãn** (`rule-v1.1`, `bi-v1.1`), ghi `spec.md §9 Changelog` (đổi gì · vì case nào), và chạy thành `run2-mock.json` / `run2-live.json` mới.
+3. Lượt 2 chạy kèm **bộ biến thể** (≥2 biến thể cho mỗi nhóm lỗi ở lượt 1) để chứng minh sửa được nguyên nhân, không phải sửa được câu.
