@@ -336,7 +336,8 @@ async function sendText(text, opt={}){
   window.TBM.applyResult(S_,r);
   renderCoverage(); renderProbes(); addReview(r.review);
   logAdd(r.action, `conf=${r.confidence} · cov=${IDEAS.map(k=>k.id[1]+':'+(S_.confirmed[k.id]?'hit':S_.coverage[k.id])[0]).join(' ')} · ex=${S_.examples} · probes=${S_.probes}/${S_.probeLimit}${r.source==='llm'?' · llm':''}${r.guard?' · GUARD':''}`);
-  S_.history.push({role:'assistant',content:r.message+(r.summary?'\n'+r.summary.join('\n'):'')});
+  const summaryText=Array.isArray(r.summary)?r.summary.join('\n'):(r.summary?String(r.summary):'');
+  S_.history.push({role:'assistant',content:(r.message||'')+(summaryText?'\n'+summaryText:'')});
   addBi(r); $('#btnSend').disabled=false; $('#mk-input').focus();
   return r;
 }

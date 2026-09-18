@@ -261,6 +261,9 @@ function decideBase(text, state, persona){
       const raw=await callLLM(messages,config);
       const parsed=parseJsonText(raw.text);
       const result={...parsed,source:'llm',model:config.model,raw:parsed.why,evidence:{},trace:{...raw.trace,parsed}};
+      const actionAliases={ask_probe:'probe',ask_clarify:'clarify'};
+      result.action=actionAliases[result.action]||result.action;
+      if (!Array.isArray(result.summary)) result.summary=result.summary?[String(result.summary)]:[];
       const a=analyzeCP3(text); result.example_found=!!(parsed.example_found||a.example);
       const merged={}; for (const k of IDEAS) merged[k.id]=state.confirmed[k.id]?'hit':(RANK[result.coverage?.[k.id]||'miss']>RANK[state.coverage[k.id]]?result.coverage[k.id]:state.coverage[k.id]);
       const hits=IDEAS.filter(k=>merged[k.id]==='hit').length, examples=state.examples+(result.example_found?1:0), answered=state.answered+(state.pendingProbe?1:0);
